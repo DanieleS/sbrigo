@@ -56,6 +56,10 @@ docs/                  requisiti, architettura e API
   "Burocrazia"). Ogni lista appare come card con l'anteprima: elementi da fare, in ritardo e
   prossima scadenza, calcolati in locale così funzionano anche offline. La lista selezionata è
   ricordata per dispositivo.
+- **Drag and drop.** Nella spesa ogni articolo ha una maniglia: trascinandolo cambia reparto e
+  ordine (campo `position`, sincronizzato come ogni altra modifica). La maniglia sull'intestazione
+  di un reparto riordina le corsie del supermercato selezionato, o l'ordine predefinito se non
+  ne è selezionato uno. I pulsanti su e giù nelle Impostazioni restano come alternativa da tastiera.
 - **Interfaccia.** Componenti accessibili di Reka UI (select, dialog a foglio, checkbox, toggle,
   toast). Testi in italiano e inglese con vue-i18n: la lingua segue il browser ed è cambiabile
   dalle Impostazioni, come il tema (sistema, chiaro, scuro). I colori sono token CSS in

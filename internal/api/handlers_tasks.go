@@ -80,6 +80,7 @@ type taskInput struct {
 	DepartmentID *uuid.UUID `json:"department_id"`
 	AssigneeID   *uuid.UUID `json:"assignee_id"`
 	DueDate      *time.Time `json:"due_date"`
+	Position     *float64   `json:"position"`
 	CreatedAt    *time.Time `json:"created_at"`
 	UpdatedAt    *time.Time `json:"updated_at"`
 }
@@ -112,6 +113,9 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.ListID != nil {
 		t.ListID = *in.ListID
+	}
+	if in.Position != nil {
+		t.Position = *in.Position
 	}
 	now := time.Now().UTC()
 	if in.CreatedAt != nil && !in.CreatedAt.After(now.Add(5*time.Minute)) {

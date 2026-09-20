@@ -85,6 +85,7 @@ Oggetto `Task`:
   "department_id": "uuid|null",
   "assignee_id": "uuid|null",
   "due_date": "2026-09-25T10:00:00Z|null",
+  "position": 1758400000000,        // ordine manuale (drag and drop); default: istante di creazione in ms
   "created_at": "...",
   "updated_at": "..."
 }
@@ -102,6 +103,10 @@ Oggetto `Task`:
 **Creazione idempotente.** `POST /tasks` accetta opzionalmente `id`, `created_at` e `updated_at`
 forniti dal client. Se l'`id` esiste già la risposta è `200` con la riga esistente (nessuna
 modifica); altrimenti `201`. Questo permette di riprodurre la coda offline senza duplicati.
+
+**Ordine manuale.** Gli elementi sono ordinati per `position` crescente (poi per data di
+creazione). Il client, dopo un trascinamento, imposta `position` al punto medio tra i vicini
+(o ±1000 agli estremi). L'agente può ignorare il campo: il default è l'istante di creazione.
 
 **Spostare tra liste.** `PATCH` con `list_id` sposta l'elemento; se la lista di destinazione è di
 un altro tipo, `item_type` cambia di conseguenza. Un `PATCH` con solo `item_type` sposta

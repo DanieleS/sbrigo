@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { dragAndDrop } from '@formkit/drag-and-drop/vue'
 import { ToggleGroupItem, ToggleGroupRoot } from 'reka-ui'
 import { useI18n } from 'vue-i18n'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
@@ -7,15 +8,17 @@ import ListCards from '../components/ListCards.vue'
 import PageHeader from '../components/PageHeader.vue'
 import QuickAdd from '../components/QuickAdd.vue'
 import TaskEditor from '../components/TaskEditor.vue'
-import TaskRow from '../components/TaskRow.vue'
+import DepartmentGroup from '../components/DepartmentGroup.vue'
 import { useCatalogStore } from '../stores/catalog'
 import { useTasksStore } from '../stores/tasks'
+import { useUiStore } from '../stores/ui'
 import type { Department, Task, TaskFields } from '../types'
 
 const DEFAULT_ORDER = '__default__'
 const { t } = useI18n()
 const catalog = useCatalogStore()
 const tasks = useTasksStore()
+const ui = useUiStore()
 const editing = ref<Task | null>(null)
 const confirmClear = ref(false)
 const lastDepartment = ref(readLastDepartment())
@@ -38,7 +41,12 @@ const groups = computed<Group[]>(() => {
     byDep.set(key, [...(byDep.get(key) ?? []), x])
   }
   const sortItems = (list: Task[]) =>
-    list.sort((a, b) => Number(a.is_completed) - Number(b.is_completed) || a.created_at.localeCompare(b.created_at))
+    list.sort(
+      (a, b) =>
+        Number(a.is_completed) - Number(b.is_completed) ||
+        a.position - b.position ||
+        a.created_at.localeCompare(b.created_at),
+    )
   const out: Group[] = []
   for (const d of catalog.orderedDepartments) {
     const list = byDep.get(d.id)
@@ -48,6 +56,30 @@ const groups = computed<Group[]>(() => {
   if (none) out.push({ department: null, items: sortItems(none) })
   return out
 })
+
+// Department groups can be dragged by their grip to change the aisle order of the current context.
+const groupsEl = ref<HTMLElement>()
+const groupValues = ref<Group[]>([])
+watch(groups, (g) => (groupValues.value = g.filter((x) => x.department)), { immediate: true })
+const noDepartmentGroup = computed(() => groups.value.find((g) => !g.department))
+onMounted(() => {
+  dragAndDrop<Group>({
+    parent: groupsEl,
+    values: groupValues,
+    group: 'grocery-groups',
+    dragHandle: '.group-grip',
+    draggingClass: 'dragging',
+    synthDraggingClass: 'dragging',
+    onSort({ values }) {
+      const ids = values.map((g) => g.department?.id).filter((id): id is string => !!id)
+      void ui.guard(() => catalog.reorderVisibleDepartments(ids))
+    },
+  })
+})
+
+async function moveItem(id: string, departmentId: string | null, position: number) {
+  await tasks.patch(id, { department_id: departmentId, position })
+}
 
 const supermarketValue = computed(() => catalog.selectedSupermarketId || DEFAULT_ORDER)
 function selectSupermarket(value: unknown) {
@@ -105,18 +137,25 @@ async function clearCart() {
       >{{ t('grocery.emptyHint') }}
     </div>
 
-    <section v-for="g in groups" :key="g.department?.id ?? 'none'" class="group">
-      <div class="group-head">
-        <div class="grow">
-          <h2>{{ g.department?.name ?? t('grocery.noDepartment') }}</h2>
-          <p v-if="g.department?.description">{{ g.department.description }}</p>
-        </div>
-        <span class="count">{{ g.items.filter((x) => !x.is_completed).length }}</span>
-      </div>
-      <div class="card">
-        <TaskRow v-for="x in g.items" :key="x.id" :task="x" @toggle="tasks.toggle(x.id)" @open="editing = x" />
-      </div>
-    </section>
+    <div ref="groupsEl" class="groups">
+      <DepartmentGroup
+        v-for="g in groupValues"
+        :key="g.department?.id ?? 'none'"
+        :department="g.department"
+        :items="g.items"
+        @toggle="tasks.toggle"
+        @open="editing = $event"
+        @moved="moveItem"
+      />
+    </div>
+    <DepartmentGroup
+      v-if="noDepartmentGroup"
+      :department="null"
+      :items="noDepartmentGroup.items"
+      @toggle="tasks.toggle"
+      @open="editing = $event"
+      @moved="moveItem"
+    />
 
     <div v-if="doneCount > 0" class="row" style="justify-content: center; margin-top: 4px">
       <button class="btn small" @click="confirmClear = true">{{ t('grocery.clearCart') }} · {{ doneCount }}</button>

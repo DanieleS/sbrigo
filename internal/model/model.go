@@ -78,6 +78,7 @@ type Task struct {
 	DepartmentID *uuid.UUID `json:"department_id"`
 	AssigneeID   *uuid.UUID `json:"assignee_id"`
 	DueDate      *time.Time `json:"due_date"`
+	Position     float64    `json:"position"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 }
@@ -110,13 +111,14 @@ type TaskPatch struct {
 	DepartmentID Optional[*uuid.UUID] `json:"department_id"`
 	AssigneeID   Optional[*uuid.UUID] `json:"assignee_id"`
 	DueDate      Optional[*time.Time] `json:"due_date"`
+	Position     Optional[float64]    `json:"position"`
 	UpdatedAt    *time.Time           `json:"updated_at"`
 }
 
 // Empty reports whether the patch changes nothing.
 func (p TaskPatch) Empty() bool {
 	return !p.ListID.Set && !p.Title.Set && !p.Notes.Set && !p.IsCompleted.Set && !p.ItemType.Set &&
-		!p.DepartmentID.Set && !p.AssigneeID.Set && !p.DueDate.Set
+		!p.DepartmentID.Set && !p.AssigneeID.Set && !p.DueDate.Set && !p.Position.Set
 }
 
 // TaskFilter narrows a task listing.

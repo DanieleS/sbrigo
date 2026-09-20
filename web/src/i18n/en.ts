@@ -33,6 +33,8 @@ const en: typeof it = {
     department: 'Department',
     noDepartment: 'No department',
     supermarket: 'Supermarket',
+    dragGroup: 'Drag to reorder the department',
+    dragItem: 'Drag to move the item',
     defaultOrder: 'Default',
     inCart: 'In the cart · {n}',
     clearCart: 'Empty cart',

@@ -15,6 +15,7 @@ const task = (id: string, extra: Partial<Task> = {}): Task => ({
   department_id: null,
   assignee_id: null,
   due_date: null,
+  position: 1,
   created_at: '2026-01-01T10:00:00.000Z',
   updated_at: '2026-01-01T10:00:00.000Z',
   ...extra,

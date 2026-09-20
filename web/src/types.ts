@@ -51,13 +51,23 @@ export interface Task {
   department_id: string | null
   assignee_id: string | null
   due_date: string | null
+  /** Manual order inside a group; defaults to the creation instant in ms. */
+  position: number
   created_at: string
   updated_at: string
 }
 
 export type TaskFields = Pick<
   Task,
-  'list_id' | 'title' | 'notes' | 'is_completed' | 'item_type' | 'department_id' | 'assignee_id' | 'due_date'
+  | 'list_id'
+  | 'title'
+  | 'notes'
+  | 'is_completed'
+  | 'item_type'
+  | 'department_id'
+  | 'assignee_id'
+  | 'due_date'
+  | 'position'
 >
 
 /** Partial update; updated_at is the client-side timestamp used for last-write-wins. */

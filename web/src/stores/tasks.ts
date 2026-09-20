@@ -58,6 +58,7 @@ export const useTasksStore = defineStore('tasks', {
         department_id: fields.department_id ?? null,
         assignee_id: fields.assignee_id ?? null,
         due_date: fields.due_date ?? null,
+        position: fields.position ?? Date.now(),
         created_at: ts,
         updated_at: ts,
       }

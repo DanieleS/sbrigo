@@ -13,11 +13,11 @@ import (
 	"github.com/danieles/sbrigo/internal/model"
 )
 
-const taskColumns = `id, list_id, title, notes, is_completed, item_type, department_id, assignee_id, due_date, created_at, updated_at`
+const taskColumns = `id, list_id, title, notes, is_completed, item_type, department_id, assignee_id, due_date, position, created_at, updated_at`
 
 func scanTask(row pgx.Row) (model.Task, error) {
 	var t model.Task
-	err := row.Scan(&t.ID, &t.ListID, &t.Title, &t.Notes, &t.IsCompleted, &t.ItemType, &t.DepartmentID, &t.AssigneeID, &t.DueDate, &t.CreatedAt, &t.UpdatedAt)
+	err := row.Scan(&t.ID, &t.ListID, &t.Title, &t.Notes, &t.IsCompleted, &t.ItemType, &t.DepartmentID, &t.AssigneeID, &t.DueDate, &t.Position, &t.CreatedAt, &t.UpdatedAt)
 	return t, err
 }
 
@@ -53,7 +53,7 @@ func (s *Store) ListTasks(ctx context.Context, f model.TaskFilter) ([]model.Task
 	if len(where) > 0 {
 		q += ` WHERE ` + strings.Join(where, " AND ")
 	}
-	q += ` ORDER BY is_completed, created_at, id`
+	q += ` ORDER BY is_completed, position, created_at, id`
 
 	rows, err := s.pool.Query(ctx, q, args...)
 	if err != nil {
@@ -116,12 +116,15 @@ func (s *Store) CreateTask(ctx context.Context, t model.Task) (model.Task, bool,
 	if t.UpdatedAt.IsZero() {
 		t.UpdatedAt = t.CreatedAt
 	}
+	if t.Position == 0 {
+		t.Position = float64(t.CreatedAt.UnixMilli())
+	}
 	row := s.pool.QueryRow(ctx, `
-		INSERT INTO tasks (id, list_id, title, notes, is_completed, item_type, department_id, assignee_id, due_date, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		INSERT INTO tasks (id, list_id, title, notes, is_completed, item_type, department_id, assignee_id, due_date, position, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		ON CONFLICT (id) DO NOTHING
 		RETURNING `+taskColumns,
-		t.ID, t.ListID, t.Title, t.Notes, t.IsCompleted, t.ItemType, t.DepartmentID, t.AssigneeID, t.DueDate, t.CreatedAt, t.UpdatedAt)
+		t.ID, t.ListID, t.Title, t.Notes, t.IsCompleted, t.ItemType, t.DepartmentID, t.AssigneeID, t.DueDate, t.Position, t.CreatedAt, t.UpdatedAt)
 	out, err := scanTask(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		existing, err := s.GetTask(ctx, t.ID)
@@ -175,6 +178,9 @@ func (s *Store) UpdateTask(ctx context.Context, id uuid.UUID, p model.TaskPatch)
 	}
 	if p.DueDate.Set {
 		set("due_date", p.DueDate.Value)
+	}
+	if p.Position.Set {
+		set("position", p.Position.Value)
 	}
 
 	row := s.pool.QueryRow(ctx, `UPDATE tasks SET `+strings.Join(sets, ", ")+`

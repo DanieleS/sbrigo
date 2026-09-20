@@ -159,5 +159,29 @@ export const useCatalogStore = defineStore('catalog', {
       await api.setDepartmentOrder(id, departmentIds)
       await this.refresh()
     },
+    /** Rewrites default_sort_order so that departments follow the given order. */
+    async reorderDefaultDepartments(departmentIds: string[]) {
+      const byId = new Map(this.departments.map((d) => [d.id, d]))
+      await Promise.all(
+        departmentIds.map((id, i) => {
+          const d = byId.get(id)
+          return d && d.default_sort_order !== (i + 1) * 10
+            ? api.updateDepartment({ ...d, default_sort_order: (i + 1) * 10 })
+            : Promise.resolve()
+        }),
+      )
+      await this.refresh()
+    },
+    /**
+     * Applies a new relative order for some departments (the visible groups) to the current
+     * context: the selected supermarket's aisles, or the default order when none is selected.
+     * Departments not listed keep their relative order after the listed ones.
+     */
+    async reorderVisibleDepartments(visibleIds: string[]) {
+      const rest = this.orderedDepartments.map((d) => d.id).filter((id) => !visibleIds.includes(id))
+      const full = [...visibleIds, ...rest]
+      if (this.selectedSupermarketId) await this.setDepartmentOrder(this.selectedSupermarketId, full)
+      else await this.reorderDefaultDepartments(full)
+    },
   },
 })

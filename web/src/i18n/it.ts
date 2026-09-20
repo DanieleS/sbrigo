@@ -31,6 +31,8 @@ export default {
     department: 'Reparto',
     noDepartment: 'Senza reparto',
     supermarket: 'Supermercato',
+    dragGroup: 'Trascina per riordinare il reparto',
+    dragItem: "Trascina per spostare l'articolo",
     defaultOrder: 'Predefinito',
     inCart: 'Nel carrello · {n}',
     clearCart: 'Svuota carrello',

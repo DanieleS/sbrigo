@@ -272,6 +272,28 @@ func expectEvent(t *testing.T, ch <-chan realtime.Event, typ string) {
 	}
 }
 
+func TestTaskPositionOrdering(t *testing.T) {
+	srv, _, _ := newTestServer(t)
+	var a, b, c model.Task
+	do(t, srv, http.MethodPost, "/api/v1/tasks", map[string]any{"title": "A"}, &a)
+	do(t, srv, http.MethodPost, "/api/v1/tasks", map[string]any{"title": "B"}, &b)
+	do(t, srv, http.MethodPost, "/api/v1/tasks", map[string]any{"title": "C", "position": 1}, &c)
+	if a.Position == 0 || b.Position <= a.Position || c.Position != 1 {
+		t.Fatalf("positions: a=%v b=%v c=%v", a.Position, b.Position, c.Position)
+	}
+	var list []model.Task
+	do(t, srv, http.MethodGet, "/api/v1/tasks", nil, &list)
+	if list[0].Title != "C" || list[1].Title != "A" || list[2].Title != "B" {
+		t.Fatalf("order by position: %s %s %s", list[0].Title, list[1].Title, list[2].Title)
+	}
+	// Drag A after B: midpoint between B and +infinity is B+1000 on the client; any larger value works.
+	do(t, srv, http.MethodPatch, "/api/v1/tasks/"+a.ID.String(), map[string]any{"position": b.Position + 1000}, &a)
+	do(t, srv, http.MethodGet, "/api/v1/tasks", nil, &list)
+	if list[2].Title != "A" {
+		t.Fatalf("reorder: %s %s %s", list[0].Title, list[1].Title, list[2].Title)
+	}
+}
+
 func TestLists(t *testing.T) {
 	srv, _, _ := newTestServer(t)
 
