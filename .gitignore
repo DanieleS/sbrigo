@@ -1,0 +1,21 @@
+# Go
+/bin/
+/sbrigo
+*.test
+*.out
+
+# Frontend
+web/node_modules/
+web/dist/*
+!web/dist/.gitkeep
+web/dev-dist/
+web/.vite/
+
+# Local environment
+.env
+*.local
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store

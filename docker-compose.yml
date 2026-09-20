@@ -1,0 +1,31 @@
+# Local development / homelab example. In the homelab the app usually points at the existing
+# PostgreSQL instance instead of the bundled one: drop the `db` service and set SBRIGO_DATABASE_URL.
+services:
+  sbrigo:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file: .env
+    environment:
+      SBRIGO_DATABASE_URL: ${SBRIGO_DATABASE_URL:-postgres://sbrigo:sbrigo@db:5432/sbrigo?sslmode=disable}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sbrigo
+      POSTGRES_PASSWORD: sbrigo
+      POSTGRES_DB: sbrigo
+    volumes:
+      - sbrigo-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sbrigo"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  sbrigo-db:
