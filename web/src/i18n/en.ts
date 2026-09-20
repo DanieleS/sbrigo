@@ -43,6 +43,7 @@ const en: typeof it = {
     title: 'Tasks',
     summary: '{open} to do · next: {next}',
     summaryNoNext: '{open} to do',
+    summaryOverdue: '{open} to do · {overdue} overdue',
     empty: 'No tasks.',
     emptyHint: 'Bills, paperwork, things to do at home: add them below.',
     placeholder: 'New task…',

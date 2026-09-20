@@ -7,7 +7,7 @@ export interface Summary {
   open: number
   done: number
   overdue: number
-  /** Earliest due date among open tasks, ISO string. */
+  /** Earliest upcoming (today or later) due date among open tasks, ISO string. */
   nextDue: string | null
 }
 
@@ -26,7 +26,10 @@ export function summarize(listId: string): Summary {
     }
     open++
     const diff = daysFromToday(t.due_date)
-    if (diff !== null && diff < 0) overdue++
+    if (diff !== null && diff < 0) {
+      overdue++
+      continue
+    }
     if (t.due_date && (!nextDue || t.due_date < nextDue)) nextDue = t.due_date
   }
   return { open, done, overdue, nextDue }

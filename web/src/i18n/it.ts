@@ -41,6 +41,7 @@ export default {
     title: 'Attività',
     summary: '{open} da fare · prossima: {next}',
     summaryNoNext: '{open} da fare',
+    summaryOverdue: '{open} da fare · {overdue} in ritardo',
     empty: 'Nessuna attività.',
     emptyHint: 'Bollette, pratiche, cose da fare in casa: aggiungile qui sotto.',
     placeholder: 'Nuova attività…',
