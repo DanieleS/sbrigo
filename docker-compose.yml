@@ -2,7 +2,9 @@
 # and Redis instances: drop the `db` and `redis` services and set SBRIGO_DATABASE_URL / SBRIGO_REDIS_URL.
 services:
   sbrigo:
-    build: .
+    image: ghcr.io/danieles/sbrigo:latest
+    # Per costruire in locale al posto dell'immagine pubblicata: commenta `image` e usa `build: .`
+    # build: .
     ports:
       - "8080:8080"
     env_file: .env

@@ -119,6 +119,26 @@ Il database indicato in `SBRIGO_TEST_DATABASE_URL` viene svuotato a ogni test: u
 
 ## Deploy
 
+La CI pubblica l'immagine su GitHub Container Registry a ogni push su `main` e a ogni tag `v*`,
+per `linux/amd64` e `linux/arm64`:
+
+| Tag                          | Quando                                   |
+| ---------------------------- | ---------------------------------------- |
+| `ghcr.io/danieles/sbrigo:latest`   | ultimo commit su `main`            |
+| `ghcr.io/danieles/sbrigo:sha-<sha>`| ogni commit                        |
+| `ghcr.io/danieles/sbrigo:1.2.3`, `:1.2` | tag git `v1.2.3`              |
+
+```sh
+docker pull ghcr.io/danieles/sbrigo:latest
+docker run -d --name sbrigo -p 8080:8080 --env-file .env ghcr.io/danieles/sbrigo:latest
+```
+
+Il package su ghcr.io nasce privato: per farlo scaricare dall'homelab senza credenziali va reso
+pubblico dalla pagina del package (Package settings, Change visibility), oppure si fa
+`docker login ghcr.io` con un token personale che abbia lo scope `read:packages`.
+
+Build locale:
+
 ```sh
 docker build -t sbrigo .
 docker run -d --name sbrigo -p 8080:8080 --env-file .env sbrigo
