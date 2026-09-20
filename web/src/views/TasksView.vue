@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui'
 import { useI18n } from 'vue-i18n'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
-import ListCards from '../components/ListCards.vue'
+import ListSwitcher from '../components/ListSwitcher.vue'
 import PageHeader from '../components/PageHeader.vue'
 import QuickAdd from '../components/QuickAdd.vue'
 import TaskEditor from '../components/TaskEditor.vue'
@@ -78,13 +78,11 @@ async function clearDone() {
 
 <template>
   <main class="page" style="--dock-h: 70px">
-    <PageHeader :title="t('tasks.title')" :subtitle="summary" />
-
-    <ListCards
-      kind="general_task"
-      :selected-id="currentList?.id ?? ''"
-      @select="(id) => catalog.selectList('general_task', id)"
-    />
+    <PageHeader :subtitle="summary">
+      <template #title>
+        <ListSwitcher kind="general_task" />
+      </template>
+    </PageHeader>
 
     <div v-if="items.length === 0" class="empty">
       <strong>{{ t('tasks.empty') }}</strong

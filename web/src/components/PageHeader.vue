@@ -6,7 +6,7 @@ import { useAuthStore } from '../stores/auth'
 import { useTasksStore } from '../stores/tasks'
 import { useOnline } from '../useOnline'
 
-defineProps<{ title: string; subtitle?: string }>()
+defineProps<{ title?: string; subtitle?: string }>()
 const { t } = useI18n()
 const auth = useAuthStore()
 const tasks = useTasksStore()
@@ -23,9 +23,12 @@ const name = computed(() => auth.user?.display_name || auth.user?.email || '?')
 <template>
   <header class="page-head">
     <div class="grow">
-      <h1>{{ title }}</h1>
+      <slot name="title">
+        <h1>{{ title }}</h1>
+      </slot>
       <p v-if="subtitle" class="sub">{{ subtitle }}</p>
     </div>
+    <slot name="actions" />
     <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px">
       <router-link to="/impostazioni" class="avatar" :aria-label="t('nav.settings')">{{ initials(name) }}</router-link>
       <span class="status" :class="status.cls" role="status">{{ status.text }}</span>

@@ -53,13 +53,15 @@ docs/                  requisiti, architettura e API
   OIDC, così le attività possono essere assegnate ai membri della famiglia. Tutti gli utenti
   autenticati hanno permessi di lettura e scrittura completi.
 - **Liste.** Spesa e attività sono composte da più liste (es. "Spesa", "Farmacia", "Casa",
-  "Burocrazia"). Ogni lista appare come card con l'anteprima: elementi da fare, in ritardo e
-  prossima scadenza, calcolati in locale così funzionano anche offline. La lista selezionata è
-  ricordata per dispositivo.
-- **Drag and drop.** Nella spesa ogni articolo ha una maniglia: trascinandolo cambia reparto e
-  ordine (campo `position`, sincronizzato come ogni altra modifica). La maniglia sull'intestazione
-  di un reparto riordina le corsie del supermercato selezionato, o l'ordine predefinito se non
-  ne è selezionato uno. I pulsanti su e giù nelle Impostazioni restano come alternativa da tastiera.
+  "Burocrazia"). In alto compare solo la lista aperta; toccandone il nome si apre un foglio con
+  le altre e la loro anteprima: elementi da fare, in ritardo e prossima scadenza, calcolati in
+  locale così funzionano anche offline. L'ultima lista aperta è ricordata per dispositivo.
+- **Spesa.** Ogni reparto ha un "+" per aggiungere direttamente lì, oltre alla barra rapida in
+  basso. Il menu con i tre puntini raccoglie la scelta del supermercato (che riordina i reparti
+  secondo le sue corsie), la modalità Riordina e Svuota carrello. In modalità Riordina compaiono
+  le maniglie: trascinando un articolo cambia reparto e ordine (campo `position`), trascinando
+  l'intestazione di un reparto cambia l'ordine delle corsie del supermercato selezionato, o quello
+  predefinito. I pulsanti su e giù nelle Impostazioni restano come alternativa da tastiera.
 - **Interfaccia.** Componenti accessibili di Reka UI (select, dialog a foglio, checkbox, toggle,
   toast). Testi in italiano e inglese con vue-i18n: la lingua segue il browser ed è cambiabile
   dalle Impostazioni, come il tema (sistema, chiaro, scuro). I colori sono token CSS in

@@ -9,7 +9,7 @@ import { useCatalogStore } from '../stores/catalog'
 import { useUiStore } from '../stores/ui'
 import type { ItemType } from '../types'
 
-const props = defineProps<{ kind: ItemType; selectedId: string }>()
+const props = defineProps<{ kind: ItemType; selectedId: string; stacked?: boolean }>()
 const emit = defineEmits<{ select: [id: string] }>()
 const { t } = useI18n()
 const catalog = useCatalogStore()
@@ -55,6 +55,7 @@ async function create() {
     :model-value="selectedId"
     type="single"
     class="list-cards"
+    :class="{ stacked }"
     :aria-label="t('lists.title')"
     @update:model-value="onSelect"
   >

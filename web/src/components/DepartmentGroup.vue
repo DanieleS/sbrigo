@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
 import { dragAndDrop } from '@formkit/drag-and-drop/vue'
 import { useI18n } from 'vue-i18n'
 import TaskRow from './TaskRow.vue'
@@ -7,13 +7,34 @@ import { positionBetween } from '../ordering'
 import { useTasksStore } from '../stores/tasks'
 import type { Department, Task } from '../types'
 
-const props = defineProps<{ department: Department | null; items: Task[] }>()
+const props = defineProps<{ department: Department | null; items: Task[]; reorderable?: boolean }>()
 const emit = defineEmits<{
   toggle: [id: string]
   open: [task: Task]
   /** An item was dropped here: new department and manual position. */
   moved: [id: string, departmentId: string | null, position: number]
+  /** Inline add straight into this department. */
+  add: [title: string, departmentId: string | null]
 }>()
+const adding = ref(false)
+const newTitle = ref('')
+const addInput = ref<HTMLInputElement>()
+async function startAdding() {
+  adding.value = true
+  await nextTick()
+  addInput.value?.focus()
+}
+function submitAdd() {
+  const v = newTitle.value.trim()
+  if (!v) return
+  emit('add', v, props.department?.id ?? null)
+  newTitle.value = ''
+  addInput.value?.focus()
+}
+function stopAdding() {
+  adding.value = false
+  newTitle.value = ''
+}
 const { t } = useI18n()
 
 const listEl = ref<HTMLElement>()
@@ -64,7 +85,7 @@ onMounted(() => {
 <template>
   <section class="group" :class="{ 'no-drag': !department }">
     <div class="group-head">
-      <span v-if="department" class="group-grip" :aria-label="t('grocery.dragGroup')" role="img">
+      <span v-if="department && reorderable" class="group-grip" :aria-label="t('grocery.dragGroup')" role="img">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <circle cx="9" cy="6" r="1.6" />
           <circle cx="15" cy="6" r="1.6" />
@@ -79,11 +100,62 @@ onMounted(() => {
         <p v-if="department?.description">{{ department.description }}</p>
       </div>
       <span class="count">{{ items.filter((x) => !x.is_completed).length }}</span>
+      <button
+        v-if="!reorderable"
+        type="button"
+        class="btn ghost icon small group-add"
+        :aria-label="t('grocery.addTo', { name: department?.name ?? t('grocery.noDepartment') })"
+        @click="adding ? stopAdding() : startAdding()"
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.4"
+          stroke-linecap="round"
+          aria-hidden="true"
+          :style="{ transform: adding ? 'rotate(45deg)' : '' }"
+        >
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </button>
     </div>
     <div ref="listEl" class="card drop-list" :data-department-id="department?.id ?? ''">
       <div v-for="x in values" :key="x.id" class="task-wrap" :data-id="x.id">
-        <TaskRow :task="x" draggable @toggle="emit('toggle', x.id)" @open="emit('open', x)" />
+        <TaskRow :task="x" :draggable="reorderable" @toggle="emit('toggle', x.id)" @open="emit('open', x)" />
       </div>
     </div>
+    <form v-if="adding" class="inline-add" @submit.prevent="submitAdd">
+      <label class="sr-only" :for="`add-${department?.id ?? 'none'}`">{{
+        t('grocery.addTo', { name: department?.name ?? t('grocery.noDepartment') })
+      }}</label>
+      <input
+        :id="`add-${department?.id ?? 'none'}`"
+        ref="addInput"
+        v-model="newTitle"
+        class="input"
+        type="text"
+        :placeholder="t('grocery.addHere')"
+        autocomplete="off"
+        enterkeyhint="done"
+        @keydown.esc="stopAdding"
+      />
+      <button type="submit" class="btn primary icon" :aria-label="t('common.add')" :disabled="!newTitle.trim()">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.6"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </button>
+    </form>
   </section>
 </template>

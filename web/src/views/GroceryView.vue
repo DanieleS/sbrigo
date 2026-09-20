@@ -1,14 +1,23 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { dragAndDrop } from '@formkit/drag-and-drop/vue'
-import { ToggleGroupItem, ToggleGroupRoot } from 'reka-ui'
+import {
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuRoot,
+  DropdownMenuTrigger,
+  RadioGroupItem,
+  RadioGroupRoot,
+} from 'reka-ui'
 import { useI18n } from 'vue-i18n'
+import BottomSheet from '../components/BottomSheet.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
-import ListCards from '../components/ListCards.vue'
+import DepartmentGroup from '../components/DepartmentGroup.vue'
+import ListSwitcher from '../components/ListSwitcher.vue'
 import PageHeader from '../components/PageHeader.vue'
 import QuickAdd from '../components/QuickAdd.vue'
 import TaskEditor from '../components/TaskEditor.vue'
-import DepartmentGroup from '../components/DepartmentGroup.vue'
 import { useCatalogStore } from '../stores/catalog'
 import { useTasksStore } from '../stores/tasks'
 import { useUiStore } from '../stores/ui'
@@ -21,6 +30,8 @@ const tasks = useTasksStore()
 const ui = useUiStore()
 const editing = ref<Task | null>(null)
 const confirmClear = ref(false)
+const supermarketSheet = ref(false)
+const reordering = ref(false)
 const lastDepartment = ref(readLastDepartment())
 
 const currentList = computed(() => catalog.currentList('grocery'))
@@ -57,7 +68,7 @@ const groups = computed<Group[]>(() => {
   return out
 })
 
-// Department groups can be dragged by their grip to change the aisle order of the current context.
+// Department groups can be dragged by their grip (reorder mode) to change the aisle order.
 const groupsEl = ref<HTMLElement>()
 const groupValues = ref<Group[]>([])
 watch(groups, (g) => (groupValues.value = g.filter((x) => x.department)), { immediate: true })
@@ -82,9 +93,11 @@ async function moveItem(id: string, departmentId: string | null, position: numbe
 }
 
 const supermarketValue = computed(() => catalog.selectedSupermarketId || DEFAULT_ORDER)
+const supermarketLabel = computed(() => catalog.selectedSupermarket?.name ?? t('grocery.defaultOrder'))
 function selectSupermarket(value: unknown) {
-  if (typeof value !== 'string' || value === '') return // ignore deselect: one option is always active
+  if (typeof value !== 'string' || value === '') return
   void catalog.selectSupermarket(value === DEFAULT_ORDER ? '' : value)
+  supermarketSheet.value = false
 }
 
 function readLastDepartment(): string | undefined {
@@ -123,14 +136,42 @@ async function clearCart() {
 </script>
 
 <template>
-  <main class="page">
-    <PageHeader :title="t('grocery.title')" :subtitle="t('grocery.summary', { open: openCount, done: doneCount })" />
+  <main class="page" style="--dock-h: 70px">
+    <PageHeader :subtitle="t('grocery.summary', { open: openCount, done: doneCount })">
+      <template #title>
+        <ListSwitcher kind="grocery" />
+      </template>
+      <template #actions>
+        <DropdownMenuRoot>
+          <DropdownMenuTrigger class="btn ghost icon" :aria-label="t('grocery.options')">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <circle cx="5" cy="12" r="2" />
+              <circle cx="12" cy="12" r="2" />
+              <circle cx="19" cy="12" r="2" />
+            </svg>
+          </DropdownMenuTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuContent class="menu" align="end" :side-offset="6" :collision-padding="12">
+              <DropdownMenuItem class="menu-item" @select="supermarketSheet = true">
+                <span class="grow">{{ t('grocery.chooseSupermarket') }}</span>
+                <span class="muted small">{{ supermarketLabel }}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem class="menu-item" @select="reordering = true">{{
+                t('grocery.reorder')
+              }}</DropdownMenuItem>
+              <DropdownMenuItem class="menu-item danger" :disabled="doneCount === 0" @select="confirmClear = true">
+                {{ t('grocery.clearCart') }}<span v-if="doneCount" class="muted small"> · {{ doneCount }}</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenuRoot>
+      </template>
+    </PageHeader>
 
-    <ListCards
-      kind="grocery"
-      :selected-id="currentList?.id ?? ''"
-      @select="(id) => catalog.selectList('grocery', id)"
-    />
+    <div v-if="reordering" class="mode-bar">
+      <span class="grow small">{{ t('grocery.reorderHint') }}</span>
+      <button class="btn small dark" @click="reordering = false">{{ t('grocery.done') }}</button>
+    </div>
 
     <div v-if="items.length === 0" class="empty">
       <strong>{{ t('grocery.empty') }}</strong
@@ -143,38 +184,26 @@ async function clearCart() {
         :key="g.department?.id ?? 'none'"
         :department="g.department"
         :items="g.items"
+        :reorderable="reordering"
         @toggle="tasks.toggle"
         @open="editing = $event"
         @moved="moveItem"
+        @add="add"
       />
     </div>
     <DepartmentGroup
       v-if="noDepartmentGroup"
       :department="null"
       :items="noDepartmentGroup.items"
+      :reorderable="reordering"
       @toggle="tasks.toggle"
       @open="editing = $event"
       @moved="moveItem"
+      @add="add"
     />
-
-    <div v-if="doneCount > 0" class="row" style="justify-content: center; margin-top: 4px">
-      <button class="btn small" @click="confirmClear = true">{{ t('grocery.clearCart') }} · {{ doneCount }}</button>
-    </div>
 
     <div class="dock">
       <div class="dock-inner">
-        <ToggleGroupRoot
-          :model-value="supermarketValue"
-          type="single"
-          class="pill-row"
-          :aria-label="t('grocery.supermarket')"
-          @update:model-value="selectSupermarket"
-        >
-          <ToggleGroupItem :value="DEFAULT_ORDER" class="pill">{{ t('grocery.defaultOrder') }}</ToggleGroupItem>
-          <ToggleGroupItem v-for="m in catalog.supermarkets" :key="m.id" :value="m.id" class="pill">{{
-            m.name
-          }}</ToggleGroupItem>
-        </ToggleGroupRoot>
         <QuickAdd
           :placeholder="t('grocery.placeholder')"
           with-department
@@ -183,6 +212,30 @@ async function clearCart() {
         />
       </div>
     </div>
+
+    <BottomSheet
+      :open="supermarketSheet"
+      :title="t('grocery.chooseSupermarket')"
+      :description="t('grocery.supermarketHint')"
+      @close="supermarketSheet = false"
+    >
+      <p class="muted small" style="margin: -8px 0 0">{{ t('grocery.supermarketHint') }}</p>
+      <RadioGroupRoot
+        :model-value="supermarketValue"
+        class="card"
+        :aria-label="t('grocery.supermarket')"
+        @update:model-value="selectSupermarket"
+      >
+        <RadioGroupItem :value="DEFAULT_ORDER" class="radio-row">
+          <span class="grow">{{ t('grocery.defaultOrder') }}</span
+          ><span class="radio-dot" />
+        </RadioGroupItem>
+        <RadioGroupItem v-for="m in catalog.supermarkets" :key="m.id" :value="m.id" class="radio-row">
+          <span class="grow">{{ m.name }}</span
+          ><span class="radio-dot" />
+        </RadioGroupItem>
+      </RadioGroupRoot>
+    </BottomSheet>
 
     <TaskEditor v-if="editing" :task="editing" @save="save" @remove="remove" @close="editing = null" />
     <ConfirmDialog
