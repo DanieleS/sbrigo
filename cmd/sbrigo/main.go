@@ -77,7 +77,7 @@ func run() error {
 		o.Register(mux)
 		log.Info("oidc login enabled", "issuer", cfg.OIDCIssuer)
 	} else {
-		mux.Handle("/auth/logout", auth.LogoutHandler(cfg.SecureCookies()))
+		mux.Handle("POST /auth/logout", auth.LogoutHandler(cfg.SecureCookies()))
 		mux.HandleFunc("/auth/login", func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "OIDC login is not configured", http.StatusNotImplemented)
 		})
@@ -100,7 +100,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           api.Logging(log, mux),
+		Handler:           api.Logging(log, api.SecurityHeaders(api.RequestTimeout(30*time.Second, mux))),
 		ReadHeaderTimeout: 10 * time.Second,
 		// No WriteTimeout: the SSE stream is long-lived.
 	}

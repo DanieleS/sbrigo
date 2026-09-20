@@ -47,7 +47,14 @@ async function remove() {
 
     <section v-if="open.length" class="group">
       <div class="card">
-        <TaskRow v-for="t in open" :key="t.id" :task="t" show-details @toggle="tasks.toggle(t.id)" @open="editing = t" />
+        <TaskRow
+          v-for="t in open"
+          :key="t.id"
+          :task="t"
+          show-details
+          @toggle="tasks.toggle(t.id)"
+          @open="editing = t"
+        />
       </div>
     </section>
 
@@ -58,7 +65,14 @@ async function remove() {
         <button v-if="showDone" class="btn small danger" @click="tasks.clearCompleted('general_task')">Svuota</button>
       </div>
       <div v-if="showDone" class="card">
-        <TaskRow v-for="t in done" :key="t.id" :task="t" show-details @toggle="tasks.toggle(t.id)" @open="editing = t" />
+        <TaskRow
+          v-for="t in done"
+          :key="t.id"
+          :task="t"
+          show-details
+          @toggle="tasks.toggle(t.id)"
+          @open="editing = t"
+        />
       </div>
     </section>
 

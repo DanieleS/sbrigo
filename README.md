@@ -13,7 +13,7 @@ il riferimento delle API in [`docs/API.md`](docs/API.md).
 | Componente      | Tecnologia                                                        |
 | --------------- | ----------------------------------------------------------------- |
 | Backend         | Go 1.24, `net/http`, pgx v5, go-oidc                              |
-| Frontend        | Vue 3, Vite, Pinia, vue-router, vite-plugin-pwa, IndexedDB (idb)  |
+| Frontend        | Vue 3, TypeScript 6, Vite, Pinia, vue-router, vite-plugin-pwa, IndexedDB (idb) |
 | Database        | PostgreSQL (istanza esistente dell'homelab)                       |
 | Autenticazione  | Logto via OIDC, Authorization Code + PKCE, cookie di sessione     |
 | Realtime        | Server-Sent Events                                                |
@@ -90,9 +90,10 @@ con la relativa legenda, modificabili dalla schermata Impostazioni.
 ### Test
 
 ```sh
-go test ./...                                       # unit test
+go test ./...                                         # unit test Go
 SBRIGO_TEST_DATABASE_URL=postgres://... go test ./... # anche i test di integrazione (schema ricreato!)
-cd web && npm run build                             # typecheck + build PWA
+golangci-lint run                                     # lint Go (config in .golangci.yml)
+cd web && npm run lint && npm test && npm run build   # ESLint + Prettier, Vitest, typecheck e build PWA
 ```
 
 Il database indicato in `SBRIGO_TEST_DATABASE_URL` viene svuotato a ogni test: usarne uno dedicato.

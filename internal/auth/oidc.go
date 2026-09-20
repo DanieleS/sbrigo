@@ -69,7 +69,6 @@ func (o *OIDC) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/login", o.login)
 	mux.HandleFunc("GET /auth/callback", o.callback)
 	mux.HandleFunc("POST /auth/logout", o.logout)
-	mux.HandleFunc("GET /auth/logout", o.logout)
 }
 
 // login starts the flow: state + PKCE verifier are kept in a short-lived signed cookie.
@@ -174,24 +173,16 @@ func (o *OIDC) callback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, returnTo, http.StatusFound)
 }
 
-func (o *OIDC) logout(w http.ResponseWriter, r *http.Request) {
+func (o *OIDC) logout(w http.ResponseWriter, _ *http.Request) {
 	clearCookie(w, SessionCookie, "/", o.opts.Secure)
-	if r.Method == http.MethodPost {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-	http.Redirect(w, r, "/", http.StatusFound)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // LogoutHandler clears the session without an identity provider (used when OIDC is disabled).
 func LogoutHandler(secure bool) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		clearCookie(w, SessionCookie, "/", secure)
-		if r.Method == http.MethodPost {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-		http.Redirect(w, r, "/", http.StatusFound)
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

@@ -21,7 +21,19 @@ const dueClass = computed(() => {
   <div class="task" :class="{ done: task.is_completed }">
     <button class="check" :aria-label="task.is_completed ? 'Segna da fare' : 'Segna fatto'" @click="emit('toggle')">
       <span>
-        <svg v-if="task.is_completed" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+        <svg
+          v-if="task.is_completed"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="3.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M5 13l4 4L19 7" />
+        </svg>
       </span>
     </button>
     <button class="body" @click="emit('open')">
@@ -31,7 +43,9 @@ const dueClass = computed(() => {
         <span v-if="assignee" class="chip">{{ assignee.display_name || assignee.email }}</span>
         <span v-if="task.notes" class="muted">{{ task.notes }}</span>
       </span>
-      <span v-else-if="task.notes" class="meta"><span class="muted">{{ task.notes }}</span></span>
+      <span v-else-if="task.notes" class="meta"
+        ><span class="muted">{{ task.notes }}</span></span
+      >
     </button>
   </div>
 </template>

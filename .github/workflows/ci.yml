@@ -29,6 +29,9 @@ jobs:
       - name: gofmt
         run: test -z "$(gofmt -l .)"
       - run: go vet ./...
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
       - run: go test ./...
         env:
           SBRIGO_TEST_DATABASE_URL: postgres://sbrigo:sbrigo@localhost:5432/sbrigo_test?sslmode=disable
@@ -46,6 +49,8 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
+      - run: npm run lint
+      - run: npm test
       - run: npm run build
 
   docker:

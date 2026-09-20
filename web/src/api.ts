@@ -40,7 +40,7 @@ function safeJson(text: string): unknown {
 
 export const api = {
   me: () => request<Me>('GET', '/api/v1/me'),
-  logout: () => request<void>('POST', '/auth/logout'),
+  logout: () => request<null>('POST', '/auth/logout'),
   users: () => request<User[]>('GET', '/api/v1/users'),
 
   departments: () => request<Department[]>('GET', '/api/v1/departments'),
@@ -51,13 +51,12 @@ export const api = {
       description: d.description,
       default_sort_order: d.default_sort_order,
     }),
-  deleteDepartment: (id: string) => request<void>('DELETE', `/api/v1/departments/${id}`),
+  deleteDepartment: (id: string) => request<null>('DELETE', `/api/v1/departments/${id}`),
 
   supermarkets: () => request<Supermarket[]>('GET', '/api/v1/supermarkets'),
   createSupermarket: (name: string) => request<Supermarket>('POST', '/api/v1/supermarkets', { name }),
-  updateSupermarket: (id: string, name: string) =>
-    request<Supermarket>('PUT', `/api/v1/supermarkets/${id}`, { name }),
-  deleteSupermarket: (id: string) => request<void>('DELETE', `/api/v1/supermarkets/${id}`),
+  updateSupermarket: (id: string, name: string) => request<Supermarket>('PUT', `/api/v1/supermarkets/${id}`, { name }),
+  deleteSupermarket: (id: string) => request<null>('DELETE', `/api/v1/supermarkets/${id}`),
   departmentOrder: (id: string) => request<DepartmentOrder[]>('GET', `/api/v1/supermarkets/${id}/department-order`),
   setDepartmentOrder: (id: string, departmentIds: string[]) =>
     request<DepartmentOrder[]>('PUT', `/api/v1/supermarkets/${id}/department-order`, {
@@ -67,5 +66,5 @@ export const api = {
   tasks: () => request<Task[]>('GET', '/api/v1/tasks'),
   createTask: (t: Task) => request<Task>('POST', '/api/v1/tasks', t),
   patchTask: (id: string, patch: TaskPatch) => request<Task>('PATCH', `/api/v1/tasks/${id}`, patch),
-  deleteTask: (id: string) => request<void>('DELETE', `/api/v1/tasks/${id}`),
+  deleteTask: (id: string) => request<null>('DELETE', `/api/v1/tasks/${id}`),
 }

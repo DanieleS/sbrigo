@@ -55,7 +55,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 
 	api.Handle("GET /api/v1/events", s.broker)
 
-	mux.Handle("/api/", s.auth.Require(api))
+	mux.Handle("/api/", s.auth.Require(RequireJSONForWrites(api)))
 }
 
 // SPAHandler serves the embedded frontend, falling back to index.html for client-side routes.
@@ -68,7 +68,11 @@ func SPAHandler(dist fs.FS) http.Handler {
 		}
 		if f, err := dist.Open(p); err == nil {
 			f.Close()
-			if p == "index.html" || p == "sw.js" || strings.HasSuffix(p, ".webmanifest") {
+			switch {
+			case strings.HasPrefix(p, "assets/"):
+				// Vite emits content-hashed file names: safe to cache forever.
+				w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			default:
 				w.Header().Set("Cache-Control", "no-cache")
 			}
 			fileServer.ServeHTTP(w, r)

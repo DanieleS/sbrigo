@@ -108,7 +108,7 @@ export const useTasksStore = defineStore('tasks', {
       await put('tasks', task)
     },
     async dropLocal(id: string) {
-      delete this.tasks[id]
+      this.tasks = Object.fromEntries(Object.entries(this.tasks).filter(([key]) => key !== id))
       await remove('tasks', id)
     },
 

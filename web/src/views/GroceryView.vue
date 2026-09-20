@@ -76,9 +76,7 @@ async function clearCompleted() {
       </select>
     </header>
 
-    <p v-if="items.length === 0" class="empty">
-      La lista è vuota.<br />Aggiungi il primo articolo qui sotto.
-    </p>
+    <p v-if="items.length === 0" class="empty">La lista è vuota.<br />Aggiungi il primo articolo qui sotto.</p>
 
     <section v-for="g in groups" :key="g.department?.id ?? 'none'" class="group">
       <div class="group-head">

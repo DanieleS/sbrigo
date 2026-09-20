@@ -15,7 +15,9 @@ async function guard(fn: () => Promise<void>) {
   try {
     await fn()
   } catch (err) {
-    error.value = navigator.onLine ? 'Operazione non riuscita.' : 'Serve la connessione per modificare reparti e supermercati.'
+    error.value = navigator.onLine
+      ? 'Operazione non riuscita.'
+      : 'Serve la connessione per modificare reparti e supermercati.'
     console.error(err)
   }
 }
@@ -62,13 +64,26 @@ const sortedDepartments = computed(() =>
   [...catalog.departments].sort((a, b) => a.default_sort_order - b.default_sort_order || a.name.localeCompare(b.name)),
 )
 function editDepartment(d: Department | null) {
-  editingDep.value = d ?? { id: '', name: '', description: '', default_sort_order: (sortedDepartments.value.at(-1)?.default_sort_order ?? 0) + 10 }
-  Object.assign(depForm, { name: editingDep.value.name, description: editingDep.value.description, default_sort_order: editingDep.value.default_sort_order })
+  editingDep.value = d ?? {
+    id: '',
+    name: '',
+    description: '',
+    default_sort_order: (sortedDepartments.value.at(-1)?.default_sort_order ?? 0) + 10,
+  }
+  Object.assign(depForm, {
+    name: editingDep.value.name,
+    description: editingDep.value.description,
+    default_sort_order: editingDep.value.default_sort_order,
+  })
 }
 async function saveDepartment() {
   const d = editingDep.value
   if (!d || !depForm.name.trim()) return
-  const payload = { name: depForm.name.trim(), description: depForm.description.trim(), default_sort_order: Number(depForm.default_sort_order) || 0 }
+  const payload = {
+    name: depForm.name.trim(),
+    description: depForm.description.trim(),
+    default_sort_order: Number(depForm.default_sort_order) || 0,
+  }
   await guard(() => (d.id ? catalog.updateDepartment({ id: d.id, ...payload }) : catalog.createDepartment(payload)))
   editingDep.value = null
 }
@@ -113,7 +128,9 @@ async function reload() {
         <template v-for="m in catalog.supermarkets" :key="m.id">
           <div class="list-item">
             <div class="grow">{{ m.name }}</div>
-            <button class="btn small" @click="orderingId === m.id ? (orderingId = null) : startOrdering(m.id)">Corsie</button>
+            <button class="btn small" @click="orderingId === m.id ? (orderingId = null) : startOrdering(m.id)">
+              Corsie
+            </button>
             <button class="btn small" @click="renameSupermarket(m.id, m.name)">Rinomina</button>
             <button class="btn small danger" @click="deleteSupermarket(m.id, m.name)">Elimina</button>
           </div>
@@ -122,7 +139,14 @@ async function reload() {
               <span class="muted small" style="width: 22px">{{ i + 1 }}.</span>
               <span style="flex: 1">{{ catalog.departmentById(depId)?.name }}</span>
               <button class="btn small icon" aria-label="Sposta su" :disabled="i === 0" @click="move(i, -1)">▲</button>
-              <button class="btn small icon" aria-label="Sposta giù" :disabled="i === draftOrder.length - 1" @click="move(i, 1)">▼</button>
+              <button
+                class="btn small icon"
+                aria-label="Sposta giù"
+                :disabled="i === draftOrder.length - 1"
+                @click="move(i, 1)"
+              >
+                ▼
+              </button>
             </div>
             <div class="row" style="justify-content: flex-end; margin-top: 8px">
               <button class="btn small" @click="orderingId = null">Annulla</button>
@@ -130,7 +154,12 @@ async function reload() {
             </div>
           </div>
         </template>
-        <form class="list-item" @submit.prevent="guard(() => catalog.createSupermarket(newSupermarket.trim())).then(() => (newSupermarket = ''))">
+        <form
+          class="list-item"
+          @submit.prevent="
+            guard(() => catalog.createSupermarket(newSupermarket.trim())).then(() => (newSupermarket = ''))
+          "
+        >
           <input v-model="newSupermarket" class="input" placeholder="Nuovo supermercato" />
           <button class="btn primary" type="submit" :disabled="!newSupermarket.trim()">Aggiungi</button>
         </form>
@@ -159,7 +188,9 @@ async function reload() {
       <div class="card">
         <div class="list-item">
           <div class="grow small muted">
-            {{ tasks.all.length }} elementi in locale<span v-if="tasks.pending"> · {{ tasks.pending }} modifiche in attesa</span>
+            {{ tasks.all.length }} elementi in locale<span v-if="tasks.pending">
+              · {{ tasks.pending }} modifiche in attesa</span
+            >
           </div>
           <button class="btn small" @click="reload">Ricarica dal server</button>
         </div>
@@ -182,7 +213,9 @@ async function reload() {
           <input id="dep-order" v-model.number="depForm.default_sort_order" class="input" type="number" />
         </div>
         <div class="actions">
-          <button v-if="editingDep.id" type="button" class="btn danger" @click="deleteDepartment(editingDep)">Elimina</button>
+          <button v-if="editingDep.id" type="button" class="btn danger" @click="deleteDepartment(editingDep)">
+            Elimina
+          </button>
           <span class="spacer" />
           <button type="button" class="btn" @click="editingDep = null">Annulla</button>
           <button type="submit" class="btn primary">Salva</button>
