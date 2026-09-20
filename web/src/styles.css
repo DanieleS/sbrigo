@@ -1,21 +1,22 @@
-/* ---------- Design tokens (palette P1 "Lime e carbone") ----------
-   Swap the values in the two blocks below to move to another palette. */
+/* ---------- Design tokens (palette P2 "Corallo e inchiostro") ----------
+   Swap the values in the blocks below to move to another palette. */
 :root {
-  --bg: #f3f4f6;
+  --bg: #ffffff;
+  --bg-2: #f4f4f5;
   --card: #ffffff;
-  --line: #e2e4e8;
-  --text: #0b0d10;
+  --line: #e5e7eb;
+  --text: #111827;
   --muted: #6b7280;
-  --accent: #c8f542;
-  --on-accent: #0b0d10;
-  --tint: #eaf9c4;
-  --sel: #0b0d10;
+  --accent: #ff4d2e;
+  --on-accent: #ffffff;
+  --tint: #ffe9e4;
+  --sel: #111827;
   --on-sel: #ffffff;
-  --danger: #d92d20;
+  --danger: #b42318;
   --danger-tint: #fee4e2;
   --nav: #ffffff;
-  --overlay: rgba(11, 13, 16, 0.45);
-  --shadow: 0 12px 32px rgba(11, 13, 16, 0.14);
+  --overlay: rgba(17, 24, 39, 0.45);
+  --shadow: 0 12px 32px rgba(17, 24, 39, 0.14);
   --font-display: 'Sora Variable', 'Manrope Variable', system-ui, sans-serif;
   --font-body: 'Manrope Variable', system-ui, sans-serif;
   --radius: 18px;
@@ -26,34 +27,40 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #0c0d12;
-    --card: #161821;
-    --line: #262a38;
+    --bg: #0f1115;
+    --bg-2: #1a1d24;
+    --card: #171a20;
+    --line: #272b34;
     --text: #f5f6fa;
     --muted: #8b90a3;
-    --tint: #2a3320;
+    --accent: #ff5a3c;
+    --on-accent: #ffffff;
+    --tint: #3a221c;
     --sel: #f5f6fa;
-    --on-sel: #0b0d10;
+    --on-sel: #111827;
     --danger: #f97066;
     --danger-tint: #3a1d1a;
-    --nav: #111219;
+    --nav: #12141a;
     --overlay: rgba(0, 0, 0, 0.6);
     --shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
-  --bg: #0c0d12;
-  --card: #161821;
-  --line: #262a38;
+  --bg: #0f1115;
+  --bg-2: #1a1d24;
+  --card: #171a20;
+  --line: #272b34;
   --text: #f5f6fa;
   --muted: #8b90a3;
-  --tint: #2a3320;
+  --accent: #ff5a3c;
+  --on-accent: #ffffff;
+  --tint: #3a221c;
   --sel: #f5f6fa;
-  --on-sel: #0b0d10;
+  --on-sel: #111827;
   --danger: #f97066;
   --danger-tint: #3a1d1a;
-  --nav: #111219;
+  --nav: #12141a;
   --overlay: rgba(0, 0, 0, 0.6);
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
