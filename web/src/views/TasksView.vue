@@ -53,9 +53,9 @@ const summary = computed(() => {
   if (!currentList.value) return ''
   const s = summarize(currentList.value.id)
   if (s.overdue > 0) return t('tasks.summaryOverdue', { open: s.open, overdue: s.overdue })
-  return s.nextDue ? t('tasks.summary', { open: s.open, next: formatDue(s.nextDue) }) : t('tasks.summaryNoNext', { open: s.open })
-})
-    : t('tasks.summaryNoNext', { open: open.length })
+  return s.nextDue
+    ? t('tasks.summary', { open: s.open, next: formatDue(s.nextDue) })
+    : t('tasks.summaryNoNext', { open: s.open })
 })
 
 async function add(title: string) {
