@@ -1,21 +1,38 @@
-/** Small date helpers shared by the views. */
+import { currentLocale, i18n } from './i18n'
 
-const dateFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short' })
-const fullFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })
+/** Locale-aware date helpers shared by the views. */
+
+function startOfDay(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+}
+
+/** Whole days between today and the given date (negative = past). */
+export function daysFromToday(iso: string | null): number | null {
+  if (!iso) return null
+  return Math.round((startOfDay(new Date(iso)) - startOfDay(new Date())) / 86_400_000)
+}
 
 export function formatDue(iso: string | null): string {
   if (!iso) return ''
+  const diff = daysFromToday(iso)
+  const t = i18n.global.t
+  if (diff === 0) return t('dates.today')
+  if (diff === 1) return t('dates.tomorrow')
+  if (diff === -1) return t('dates.yesterday')
   const d = new Date(iso)
-  const today = new Date()
-  const diffDays = Math.round((startOfDay(d) - startOfDay(today)) / 86_400_000)
-  if (diffDays === 0) return 'Oggi'
-  if (diffDays === 1) return 'Domani'
-  if (diffDays === -1) return 'Ieri'
-  return d.getFullYear() === today.getFullYear() ? dateFmt.format(d) : fullFmt.format(d)
+  const locale = currentLocale()
+  const sameYear = d.getFullYear() === new Date().getFullYear()
+  return new Intl.DateTimeFormat(locale, {
+    weekday: Math.abs(diff ?? 0) < 7 ? 'short' : undefined,
+    day: 'numeric',
+    month: 'short',
+    year: sameYear ? undefined : 'numeric',
+  }).format(d)
 }
 
 export function isOverdue(iso: string | null): boolean {
-  return !!iso && startOfDay(new Date(iso)) < startOfDay(new Date())
+  const diff = daysFromToday(iso)
+  return diff !== null && diff < 0
 }
 
 /** ISO date (yyyy-mm-dd) for <input type="date">, in local time. */
@@ -33,6 +50,20 @@ export function fromDateInput(value: string): string | null {
   return new Date(y!, m! - 1, d!, 12, 0, 0).toISOString()
 }
 
-function startOfDay(d: Date): number {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+/** ISO timestamp at local noon, `offset` days from today. */
+export function dateInDays(offset: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0).toISOString()
+}
+
+/** Two-letter initials for avatars. */
+export function initials(name: string): string {
+  const parts = name
+    .trim()
+    .split(/[\s@._-]+/)
+    .filter(Boolean)
+  const first = parts[0]?.[0] ?? '?'
+  const second = parts[1]?.[0] ?? parts[0]?.[1] ?? ''
+  return (first + second).toUpperCase()
 }

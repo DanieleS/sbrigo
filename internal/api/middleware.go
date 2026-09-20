@@ -21,6 +21,7 @@ func SecurityHeaders(next http.Handler) http.Handler {
 			"script-src 'self'",
 			"style-src 'self' 'unsafe-inline'",
 			"img-src 'self' data:",
+			"font-src 'self'",
 			"connect-src 'self'",
 			"manifest-src 'self'",
 			"worker-src 'self'",

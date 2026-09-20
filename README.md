@@ -13,7 +13,7 @@ il riferimento delle API in [`docs/API.md`](docs/API.md).
 | Componente      | Tecnologia                                                        |
 | --------------- | ----------------------------------------------------------------- |
 | Backend         | Go 1.24, `net/http`, pgx v5, go-oidc                              |
-| Frontend        | Vue 3, TypeScript 6, Vite, Pinia, vue-router, vite-plugin-pwa, IndexedDB (idb) |
+| Frontend        | Vue 3, TypeScript 6, Vite, Pinia, vue-router, Reka UI, vue-i18n (it/en), vite-plugin-pwa, IndexedDB (idb) |
 | Database        | PostgreSQL (istanza esistente dell'homelab)                       |
 | Autenticazione  | Logto via OIDC, Authorization Code + PKCE, sessioni in Redis      |
 | Realtime        | Server-Sent Events                                                |
@@ -52,6 +52,10 @@ docs/                  requisiti, architettura e API
 - **Utenti.** Al primo login il backend crea il profilo locale (`users`) a partire dai claim
   OIDC, così le attività possono essere assegnate ai membri della famiglia. Tutti gli utenti
   autenticati hanno permessi di lettura e scrittura completi.
+- **Interfaccia.** Componenti accessibili di Reka UI (select, dialog a foglio, checkbox, toggle,
+  toast). Testi in italiano e inglese con vue-i18n: la lingua segue il browser ed è cambiabile
+  dalle Impostazioni, come il tema (sistema, chiaro, scuro). I colori sono token CSS in
+  `web/src/styles.css`, un blocco per il chiaro e uno per lo scuro.
 - **Agente.** Le stesse API sono utilizzabili con una API key statica nell'header `X-API-Key`.
   L'eventuale esposizione via MCP è demandata a un microservizio separato che consuma queste API.
 

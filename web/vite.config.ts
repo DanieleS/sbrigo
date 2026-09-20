@@ -33,8 +33,8 @@ export default defineConfig({
         scope: '/',
         display: 'standalone',
         orientation: 'portrait',
-        background_color: '#f6f5f1',
-        theme_color: '#2f7d5b',
+        background_color: '#f3f4f6',
+        theme_color: '#0b0d10',
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -57,5 +57,6 @@ export default defineConfig({
       '/auth': { target: backend, changeOrigin: false },
     },
   },
-  build: { sourcemap: false },
+  // Never inline assets as data: URIs: the backend CSP only allows same-origin resources.
+  build: { sourcemap: false, assetsInlineLimit: 0 },
 })

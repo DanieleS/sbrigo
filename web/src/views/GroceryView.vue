@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { ToggleGroupItem, ToggleGroupRoot } from 'reka-ui'
+import { useI18n } from 'vue-i18n'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
+import PageHeader from '../components/PageHeader.vue'
 import QuickAdd from '../components/QuickAdd.vue'
 import TaskEditor from '../components/TaskEditor.vue'
 import TaskRow from '../components/TaskRow.vue'
@@ -7,13 +11,17 @@ import { useCatalogStore } from '../stores/catalog'
 import { useTasksStore } from '../stores/tasks'
 import type { Department, Task, TaskFields } from '../types'
 
+const DEFAULT_ORDER = '__default__'
+const { t } = useI18n()
 const catalog = useCatalogStore()
 const tasks = useTasksStore()
 const editing = ref<Task | null>(null)
-const lastDepartment = ref(localStorage.getItem('sbrigo.lastDepartment') ?? undefined)
+const confirmClear = ref(false)
+const lastDepartment = ref(readLastDepartment())
 
 const items = computed(() => tasks.byType('grocery'))
-const completedCount = computed(() => items.value.filter((t) => t.is_completed).length)
+const openCount = computed(() => items.value.filter((x) => !x.is_completed).length)
+const doneCount = computed(() => items.value.length - openCount.value)
 
 interface Group {
   department: Department | null
@@ -23,9 +31,9 @@ interface Group {
 /** Departments in aisle order for the selected supermarket; empty departments are hidden. */
 const groups = computed<Group[]>(() => {
   const byDep = new Map<string | null, Task[]>()
-  for (const t of items.value) {
-    const key = t.department_id && catalog.departmentById(t.department_id) ? t.department_id : null
-    byDep.set(key, [...(byDep.get(key) ?? []), t])
+  for (const x of items.value) {
+    const key = x.department_id && catalog.departmentById(x.department_id) ? x.department_id : null
+    byDep.set(key, [...(byDep.get(key) ?? []), x])
   }
   const sortItems = (list: Task[]) =>
     list.sort((a, b) => Number(a.is_completed) - Number(b.is_completed) || a.created_at.localeCompare(b.created_at))
@@ -39,8 +47,26 @@ const groups = computed<Group[]>(() => {
   return out
 })
 
+const supermarketValue = computed(() => catalog.selectedSupermarketId || DEFAULT_ORDER)
+function selectSupermarket(value: unknown) {
+  if (typeof value !== 'string' || value === '') return // ignore deselect: one option is always active
+  void catalog.selectSupermarket(value === DEFAULT_ORDER ? '' : value)
+}
+
+function readLastDepartment(): string | undefined {
+  try {
+    return localStorage.getItem('sbrigo.lastDepartment') ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
 async function add(title: string, departmentId: string | null) {
-  if (departmentId) localStorage.setItem('sbrigo.lastDepartment', departmentId)
+  try {
+    if (departmentId) localStorage.setItem('sbrigo.lastDepartment', departmentId)
+  } catch {
+    // storage unavailable
+  }
   lastDepartment.value = departmentId ?? undefined
   await tasks.add({ title, item_type: 'grocery', department_id: departmentId })
 }
@@ -55,45 +81,68 @@ async function remove() {
   editing.value = null
 }
 
-async function clearCompleted() {
-  if (confirm(`Rimuovere ${completedCount.value} articoli spuntati?`)) await tasks.clearCompleted('grocery')
+async function clearCart() {
+  confirmClear.value = false
+  await tasks.clearCompleted('grocery')
 }
 </script>
 
 <template>
   <main class="page">
-    <header class="topbar">
-      <h1>Spesa</h1>
-      <select
-        class="select"
-        style="width: auto; max-width: 55%"
-        aria-label="Supermercato"
-        :value="catalog.selectedSupermarketId"
-        @change="catalog.selectSupermarket(($event.target as HTMLSelectElement).value)"
-      >
-        <option value="">Ordine predefinito</option>
-        <option v-for="m in catalog.supermarkets" :key="m.id" :value="m.id">{{ m.name }}</option>
-      </select>
-    </header>
+    <PageHeader :title="t('grocery.title')" :subtitle="t('grocery.summary', { open: openCount, done: doneCount })" />
 
-    <p v-if="items.length === 0" class="empty">La lista è vuota.<br />Aggiungi il primo articolo qui sotto.</p>
+    <div v-if="items.length === 0" class="empty">
+      <strong>{{ t('grocery.empty') }}</strong
+      >{{ t('grocery.emptyHint') }}
+    </div>
 
     <section v-for="g in groups" :key="g.department?.id ?? 'none'" class="group">
       <div class="group-head">
-        <h2>{{ g.department?.name ?? 'Senza reparto' }}</h2>
-        <p v-if="g.department?.description">{{ g.department.description }}</p>
+        <div class="grow">
+          <h2>{{ g.department?.name ?? t('grocery.noDepartment') }}</h2>
+          <p v-if="g.department?.description">{{ g.department.description }}</p>
+        </div>
+        <span class="count">{{ g.items.filter((x) => !x.is_completed).length }}</span>
       </div>
       <div class="card">
-        <TaskRow v-for="t in g.items" :key="t.id" :task="t" @toggle="tasks.toggle(t.id)" @open="editing = t" />
+        <TaskRow v-for="x in g.items" :key="x.id" :task="x" @toggle="tasks.toggle(x.id)" @open="editing = x" />
       </div>
     </section>
 
-    <div v-if="completedCount > 0" class="row" style="justify-content: center; margin-top: 8px">
-      <button class="btn small" @click="clearCompleted">Rimuovi spuntati ({{ completedCount }})</button>
+    <div v-if="doneCount > 0" class="row" style="justify-content: center; margin-top: 4px">
+      <button class="btn small" @click="confirmClear = true">{{ t('grocery.clearCart') }} · {{ doneCount }}</button>
     </div>
 
-    <QuickAdd placeholder="Aggiungi alla spesa…" with-department :default-department="lastDepartment" @add="add" />
+    <div class="dock">
+      <div class="dock-inner">
+        <ToggleGroupRoot
+          :model-value="supermarketValue"
+          type="single"
+          class="pill-row"
+          :aria-label="t('grocery.supermarket')"
+          @update:model-value="selectSupermarket"
+        >
+          <ToggleGroupItem :value="DEFAULT_ORDER" class="pill">{{ t('grocery.defaultOrder') }}</ToggleGroupItem>
+          <ToggleGroupItem v-for="m in catalog.supermarkets" :key="m.id" :value="m.id" class="pill">{{
+            m.name
+          }}</ToggleGroupItem>
+        </ToggleGroupRoot>
+        <QuickAdd
+          :placeholder="t('grocery.placeholder')"
+          with-department
+          :default-department="lastDepartment"
+          @add="add"
+        />
+      </div>
+    </div>
 
     <TaskEditor v-if="editing" :task="editing" @save="save" @remove="remove" @close="editing = null" />
+    <ConfirmDialog
+      :open="confirmClear"
+      :title="t('grocery.clearCartTitle', { n: doneCount })"
+      :description="t('grocery.clearCartText')"
+      @confirm="clearCart"
+      @cancel="confirmClear = false"
+    />
   </main>
 </template>

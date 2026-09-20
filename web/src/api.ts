@@ -41,6 +41,7 @@ function safeJson(text: string): unknown {
 export const api = {
   me: () => request<Me>('GET', '/api/v1/me'),
   logout: () => request<null>('POST', '/auth/logout'),
+  logoutAll: () => request<null>('POST', '/auth/logout-all'),
   users: () => request<User[]>('GET', '/api/v1/users'),
 
   departments: () => request<Department[]>('GET', '/api/v1/departments'),

@@ -44,5 +44,13 @@ export const useAuthStore = defineStore('auth', {
         this.markAnonymous()
       }
     },
+    async logoutAll() {
+      try {
+        await api.logoutAll()
+      } finally {
+        await setMeta('me', null)
+        this.markAnonymous()
+      }
+    },
   },
 })

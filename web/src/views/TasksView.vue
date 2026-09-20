@@ -1,83 +1,150 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui'
+import { useI18n } from 'vue-i18n'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
+import PageHeader from '../components/PageHeader.vue'
 import QuickAdd from '../components/QuickAdd.vue'
 import TaskEditor from '../components/TaskEditor.vue'
 import TaskRow from '../components/TaskRow.vue'
+import { daysFromToday } from '../format'
 import { useTasksStore } from '../stores/tasks'
 import type { Task, TaskFields } from '../types'
 
+const { t } = useI18n()
 const tasks = useTasksStore()
 const editing = ref<Task | null>(null)
 const showDone = ref(false)
+const confirmClear = ref(false)
 
 const items = computed(() => tasks.byType('general_task'))
-const open = computed(() =>
-  items.value
-    .filter((t) => !t.is_completed)
-    .sort((a, b) => (a.due_date ?? '9').localeCompare(b.due_date ?? '9') || a.created_at.localeCompare(b.created_at)),
-)
+const byDue = (a: Task, b: Task) =>
+  (a.due_date ?? '9').localeCompare(b.due_date ?? '9') || a.created_at.localeCompare(b.created_at)
+
+interface Bucket {
+  key: string
+  label: string
+  danger?: boolean
+  items: Task[]
+}
+
+const buckets = computed<Bucket[]>(() => {
+  const open = items.value.filter((x) => !x.is_completed).sort(byDue)
+  const pick = (test: (diff: number | null) => boolean) => open.filter((x) => test(daysFromToday(x.due_date)))
+  const out: Bucket[] = [
+    { key: 'overdue', label: t('tasks.overdue'), danger: true, items: pick((d) => d !== null && d < 0) },
+    { key: 'today', label: t('tasks.today'), items: pick((d) => d === 0) },
+    { key: 'week', label: t('tasks.thisWeek'), items: pick((d) => d !== null && d > 0 && d <= 7) },
+    { key: 'later', label: t('tasks.later'), items: pick((d) => d !== null && d > 7) },
+    { key: 'nodate', label: t('tasks.noDate'), items: pick((d) => d === null) },
+  ]
+  return out.filter((b) => b.items.length > 0)
+})
 const done = computed(() =>
-  items.value.filter((t) => t.is_completed).sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
+  items.value.filter((x) => x.is_completed).sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
 )
+
+const summary = computed(() => {
+  const overdue = buckets.value.find((b) => b.key === 'overdue')?.items.length ?? 0
+  const week = items.value.filter((x) => {
+    const d = daysFromToday(x.due_date)
+    return !x.is_completed && d !== null && d >= 0 && d <= 7
+  }).length
+  return overdue > 0 ? t('tasks.summary', { overdue, week }) : t('tasks.summaryNoOverdue', { week })
+})
 
 async function add(title: string) {
   editing.value = await tasks.add({ title, item_type: 'general_task' })
 }
-
 async function save(patch: Partial<TaskFields>) {
   if (editing.value) await tasks.patch(editing.value.id, patch)
   editing.value = null
 }
-
 async function remove() {
   if (editing.value) await tasks.removeTask(editing.value.id)
   editing.value = null
 }
+async function clearDone() {
+  confirmClear.value = false
+  await tasks.clearCompleted('general_task')
+}
 </script>
 
 <template>
-  <main class="page">
-    <header class="topbar">
-      <h1>Attività</h1>
-    </header>
+  <main class="page" style="--dock-h: 70px">
+    <PageHeader :title="t('tasks.title')" :subtitle="summary" />
 
-    <p v-if="items.length === 0" class="empty">
-      Nessuna attività.<br />Bollette, pratiche, cose da fare in casa: aggiungile qui sotto.
-    </p>
+    <div v-if="items.length === 0" class="empty">
+      <strong>{{ t('tasks.empty') }}</strong
+      >{{ t('tasks.emptyHint') }}
+    </div>
 
-    <section v-if="open.length" class="group">
+    <section v-for="b in buckets" :key="b.key" class="group">
+      <div class="group-head" :class="{ danger: b.danger }">
+        <h2 class="grow">{{ b.label }}</h2>
+        <span class="count">{{ b.items.length }}</span>
+      </div>
       <div class="card">
         <TaskRow
-          v-for="t in open"
-          :key="t.id"
-          :task="t"
+          v-for="x in b.items"
+          :key="x.id"
+          :task="x"
           show-details
-          @toggle="tasks.toggle(t.id)"
-          @open="editing = t"
+          @toggle="tasks.toggle(x.id)"
+          @open="editing = x"
         />
       </div>
     </section>
 
-    <section v-if="done.length" class="group">
-      <div class="group-head row">
-        <h2 style="flex: 1">Completate ({{ done.length }})</h2>
-        <button class="btn small" @click="showDone = !showDone">{{ showDone ? 'Nascondi' : 'Mostra' }}</button>
-        <button v-if="showDone" class="btn small danger" @click="tasks.clearCompleted('general_task')">Svuota</button>
+    <CollapsibleRoot v-if="done.length" v-model:open="showDone" class="group">
+      <div class="group-head">
+        <CollapsibleTrigger class="btn ghost small" style="padding: 0 4px; gap: 8px">
+          <h2 style="margin: 0">{{ t('tasks.completed') }}</h2>
+          <span class="count">{{ done.length }}</span>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            :style="{ transform: showDone ? 'rotate(180deg)' : '' }"
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </CollapsibleTrigger>
+        <span class="grow" />
+        <button v-if="showDone" class="btn small danger" @click="confirmClear = true">
+          {{ t('tasks.clearCompleted') }}
+        </button>
       </div>
-      <div v-if="showDone" class="card">
+      <CollapsibleContent class="card">
         <TaskRow
-          v-for="t in done"
-          :key="t.id"
-          :task="t"
+          v-for="x in done"
+          :key="x.id"
+          :task="x"
           show-details
-          @toggle="tasks.toggle(t.id)"
-          @open="editing = t"
+          @toggle="tasks.toggle(x.id)"
+          @open="editing = x"
         />
-      </div>
-    </section>
+      </CollapsibleContent>
+    </CollapsibleRoot>
 
-    <QuickAdd placeholder="Nuova attività…" @add="add" />
+    <div class="dock">
+      <div class="dock-inner">
+        <QuickAdd :placeholder="t('tasks.placeholder')" @add="add" />
+      </div>
+    </div>
 
     <TaskEditor v-if="editing" :task="editing" @save="save" @remove="remove" @close="editing = null" />
+    <ConfirmDialog
+      :open="confirmClear"
+      :title="t('tasks.clearCompletedTitle', { n: done.length })"
+      @confirm="clearDone"
+      @cancel="confirmClear = false"
+    />
   </main>
 </template>
