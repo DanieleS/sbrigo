@@ -5,6 +5,7 @@ import type { Task } from './types'
 
 const task = (id: string): Task => ({
   id,
+  list_id: 'list-1',
   title: 'Latte',
   notes: null,
   is_completed: false,

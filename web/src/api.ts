@@ -1,4 +1,15 @@
-import type { Department, DepartmentOrder, Me, Supermarket, Task, TaskPatch, User } from './types'
+import type {
+  Department,
+  DepartmentOrder,
+  ItemType,
+  List,
+  ListSummary,
+  Me,
+  Supermarket,
+  Task,
+  TaskPatch,
+  User,
+} from './types'
 
 export class ApiError extends Error {
   constructor(
@@ -63,6 +74,13 @@ export const api = {
     request<DepartmentOrder[]>('PUT', `/api/v1/supermarkets/${id}/department-order`, {
       department_ids: departmentIds,
     }),
+
+  lists: () => request<ListSummary[]>('GET', '/api/v1/lists'),
+  createList: (name: string, kind: ItemType, sortOrder: number) =>
+    request<List>('POST', '/api/v1/lists', { name, kind, sort_order: sortOrder }),
+  updateList: (id: string, name: string, sortOrder: number) =>
+    request<List>('PUT', `/api/v1/lists/${id}`, { name, sort_order: sortOrder }),
+  deleteList: (id: string) => request<null>('DELETE', `/api/v1/lists/${id}`),
 
   tasks: () => request<Task[]>('GET', '/api/v1/tasks'),
   createTask: (t: Task) => request<Task>('POST', '/api/v1/tasks', t),

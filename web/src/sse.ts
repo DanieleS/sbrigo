@@ -31,6 +31,9 @@ export function connect(): void {
     'supermarket.updated',
     'supermarket.deleted',
     'supermarket.order_updated',
+    'list.created',
+    'list.updated',
+    'list.deleted',
   ]) {
     source.addEventListener(type, () => void catalog.refresh())
   }

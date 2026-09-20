@@ -271,3 +271,76 @@ func expectEvent(t *testing.T, ch <-chan realtime.Event, typ string) {
 		t.Fatalf("no %q event", typ)
 	}
 }
+
+func TestLists(t *testing.T) {
+	srv, _, _ := newTestServer(t)
+
+	var lists []model.ListSummary
+	do(t, srv, http.MethodGet, "/api/v1/lists", nil, &lists)
+	if len(lists) != 2 {
+		t.Fatalf("seeded lists expected, got %d", len(lists))
+	}
+	var groceryDefault, tasksDefault model.ListSummary
+	for _, l := range lists {
+		if l.Kind == model.ItemTypeGrocery {
+			groceryDefault = l
+		} else {
+			tasksDefault = l
+		}
+	}
+
+	// A task without list_id lands in the default list of its type.
+	var task model.Task
+	do(t, srv, http.MethodPost, "/api/v1/tasks", map[string]any{"title": "Latte"}, &task)
+	if task.ListID != groceryDefault.ID || task.ItemType != model.ItemTypeGrocery {
+		t.Fatalf("default list not applied: %+v", task)
+	}
+
+	// A second tasks list; creating into it sets item_type from the list kind.
+	var farmacia model.List
+	if resp := do(t, srv, http.MethodPost, "/api/v1/lists", map[string]any{"name": "Farmacia", "kind": "grocery", "sort_order": 20}, &farmacia); resp.StatusCode != http.StatusCreated {
+		t.Fatalf("create list %d", resp.StatusCode)
+	}
+	if resp := do(t, srv, http.MethodPost, "/api/v1/lists", map[string]any{"name": "x", "kind": "nope"}, nil); resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("invalid kind accepted: %d", resp.StatusCode)
+	}
+	due := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second)
+	var t2 model.Task
+	do(t, srv, http.MethodPost, "/api/v1/tasks", map[string]any{"title": "Aspirina", "list_id": farmacia.ID, "item_type": "general_task", "due_date": due}, &t2)
+	if t2.ListID != farmacia.ID || t2.ItemType != model.ItemTypeGrocery {
+		t.Fatalf("list kind must win over item_type: %+v", t2)
+	}
+	if resp := do(t, srv, http.MethodPost, "/api/v1/tasks", map[string]any{"title": "x", "list_id": uuid.New()}, nil); resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("unknown list accepted: %d", resp.StatusCode)
+	}
+
+	// Moving a task to a list of another kind changes its type.
+	do(t, srv, http.MethodPatch, "/api/v1/tasks/"+task.ID.String(), map[string]any{"list_id": tasksDefault.ID}, &task)
+	if task.ListID != tasksDefault.ID || task.ItemType != model.ItemTypeGeneralTask {
+		t.Fatalf("move between kinds: %+v", task)
+	}
+
+	// Filtering and summaries.
+	var inFarmacia []model.Task
+	do(t, srv, http.MethodGet, "/api/v1/tasks?list_id="+farmacia.ID.String(), nil, &inFarmacia)
+	if len(inFarmacia) != 1 || inFarmacia[0].Title != "Aspirina" {
+		t.Fatalf("list filter: %+v", inFarmacia)
+	}
+	do(t, srv, http.MethodGet, "/api/v1/lists", nil, &lists)
+	for _, l := range lists {
+		if l.ID == farmacia.ID && (l.OpenCount != 1 || l.NextDue == nil || !l.NextDue.Equal(due)) {
+			t.Fatalf("summary: %+v", l)
+		}
+	}
+
+	// Deleting the only tasks list is refused; deleting a sibling grocery list cascades.
+	if resp := do(t, srv, http.MethodDelete, "/api/v1/lists/"+tasksDefault.ID.String(), nil, nil); resp.StatusCode != http.StatusConflict {
+		t.Fatalf("last list delete status %d", resp.StatusCode)
+	}
+	if resp := do(t, srv, http.MethodDelete, "/api/v1/lists/"+farmacia.ID.String(), nil, nil); resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("delete list status %d", resp.StatusCode)
+	}
+	if resp := do(t, srv, http.MethodGet, "/api/v1/tasks/"+t2.ID.String(), nil, nil); resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("task of deleted list still present: %d", resp.StatusCode)
+	}
+}

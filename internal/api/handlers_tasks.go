@@ -31,7 +31,7 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 		}
 		f.IsCompleted = &b
 	}
-	for name, dst := range map[string]**uuid.UUID{"department_id": &f.DepartmentID, "assignee_id": &f.AssigneeID} {
+	for name, dst := range map[string]**uuid.UUID{"list_id": &f.ListID, "department_id": &f.DepartmentID, "assignee_id": &f.AssigneeID} {
 		if v := q.Get(name); v != "" {
 			id, err := uuid.Parse(v)
 			if err != nil {
@@ -72,6 +72,7 @@ func (s *Server) getTask(w http.ResponseWriter, r *http.Request) {
 // creations replay idempotently with their original timestamps.
 type taskInput struct {
 	ID           *uuid.UUID `json:"id"`
+	ListID       *uuid.UUID `json:"list_id"`
 	Title        string     `json:"title"`
 	Notes        *string    `json:"notes"`
 	IsCompleted  bool       `json:"is_completed"`
@@ -93,10 +94,7 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "title is required")
 		return
 	}
-	if in.ItemType == "" {
-		in.ItemType = model.ItemTypeGrocery
-	}
-	if !model.ValidItemType(in.ItemType) {
+	if in.ItemType != "" && !model.ValidItemType(in.ItemType) {
 		writeError(w, http.StatusBadRequest, "invalid item_type")
 		return
 	}
@@ -111,6 +109,9 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.ID != nil {
 		t.ID = *in.ID
+	}
+	if in.ListID != nil {
+		t.ListID = *in.ListID
 	}
 	now := time.Now().UTC()
 	if in.CreatedAt != nil && !in.CreatedAt.After(now.Add(5*time.Minute)) {
@@ -182,7 +183,7 @@ func (s *Server) deleteTask(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// deleteCompletedTasks handles DELETE /api/v1/tasks?completed=true[&type=grocery].
+// deleteCompletedTasks handles DELETE /api/v1/tasks?completed=true[&type=grocery][&list_id=...].
 func (s *Server) deleteCompletedTasks(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	if ok, _ := strconv.ParseBool(q.Get("completed")); !ok {
@@ -194,7 +195,16 @@ func (s *Server) deleteCompletedTasks(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid type")
 		return
 	}
-	ids, err := s.store.DeleteCompletedTasks(r.Context(), itemType)
+	var listID *uuid.UUID
+	if v := q.Get("list_id"); v != "" {
+		id, err := uuid.Parse(v)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid list_id")
+			return
+		}
+		listID = &id
+	}
+	ids, err := s.store.DeleteCompletedTasks(r.Context(), itemType, listID)
 	if s.storeError(w, err) {
 		return
 	}
@@ -204,8 +214,12 @@ func (s *Server) deleteCompletedTasks(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"deleted": len(ids), "ids": ids})
 }
 
-// storeErrorFK additionally maps foreign-key violations (unknown department/assignee) to 400.
+// storeErrorFK additionally maps reference errors (unknown list/department/assignee) to 400.
 func (s *Server) storeErrorFK(w http.ResponseWriter, err error) bool {
+	if errors.Is(err, store.ErrUnknownList) {
+		writeError(w, http.StatusBadRequest, "unknown list_id")
+		return true
+	}
 	if err != nil && isForeignKeyViolation(err) {
 		writeError(w, http.StatusBadRequest, "unknown department_id or assignee_id")
 		return true

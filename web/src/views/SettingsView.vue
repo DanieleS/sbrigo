@@ -9,7 +9,7 @@ import { useAuthStore } from '../stores/auth'
 import { useCatalogStore } from '../stores/catalog'
 import { useTasksStore } from '../stores/tasks'
 import { useUiStore, type Theme } from '../stores/ui'
-import type { Department } from '../types'
+import type { Department, ItemType, List } from '../types'
 
 const { t, locale } = useI18n()
 const auth = useAuthStore()
@@ -24,6 +24,23 @@ const themeOptions = computed(() => [
   { value: 'light', label: t('settings.themeLight') },
   { value: 'dark', label: t('settings.themeDark') },
 ])
+
+// Lists
+const renamingList = ref<{ id: string; name: string } | null>(null)
+const deletingList = ref<List | null>(null)
+const kindLabel = (kind: ItemType) => (kind === 'grocery' ? t('lists.kindGrocery') : t('lists.kindTasks'))
+const listCount = (id: string) => tasks.byList(id).length
+async function saveListRename() {
+  const r = renamingList.value
+  if (!r || !r.name.trim()) return
+  if (await ui.guard(() => catalog.renameList(r.id, r.name.trim()))) renamingList.value = null
+}
+async function deleteList() {
+  const l = deletingList.value
+  if (!l) return
+  await ui.guard(() => catalog.deleteList(l.id))
+  deletingList.value = null
+}
 
 // Supermarkets
 const newSupermarket = ref('')
@@ -172,6 +189,38 @@ async function reload() {
     </section>
 
     <section class="section">
+      <h2>{{ t('lists.title') }}</h2>
+      <p class="hint">{{ t('lists.lastListHint') }}</p>
+      <div class="card">
+        <template v-for="kind in ['grocery', 'general_task'] as ItemType[]" :key="kind">
+          <div v-for="l in catalog.listsOfKind(kind)" :key="l.id" class="list-item">
+            <div class="grow">
+              <div class="primary-text">{{ l.name }}</div>
+              <div class="small muted">
+                {{ kindLabel(l.kind) }} · {{ t('settings.localItems', { n: listCount(l.id) }) }}
+              </div>
+            </div>
+            <button
+              class="btn small"
+              :aria-label="`${t('common.rename')} ${l.name}`"
+              @click="renamingList = { id: l.id, name: l.name }"
+            >
+              {{ t('common.rename') }}
+            </button>
+            <button
+              class="btn small danger"
+              :aria-label="`${t('common.delete')} ${l.name}`"
+              :disabled="catalog.listsOfKind(kind).length <= 1"
+              @click="deletingList = l"
+            >
+              {{ t('common.delete') }}
+            </button>
+          </div>
+        </template>
+      </div>
+    </section>
+
+    <section class="section">
       <h2>{{ t('settings.supermarkets') }}</h2>
       <p class="hint">{{ t('settings.supermarketsHint') }}</p>
       <div class="card">
@@ -293,6 +342,31 @@ async function reload() {
         </div>
       </form>
     </BottomSheet>
+
+    <BottomSheet :open="!!renamingList" :title="t('common.rename')" @close="renamingList = null">
+      <form
+        v-if="renamingList"
+        style="display: flex; flex-direction: column; gap: 16px"
+        @submit.prevent="saveListRename"
+      >
+        <div class="field">
+          <label for="rename-list-input">{{ t('lists.name') }}</label>
+          <input id="rename-list-input" v-model="renamingList.name" class="input" required />
+        </div>
+        <div class="actions">
+          <button type="button" class="btn" @click="renamingList = null">{{ t('common.cancel') }}</button>
+          <button type="submit" class="btn primary">{{ t('common.save') }}</button>
+        </div>
+      </form>
+    </BottomSheet>
+
+    <ConfirmDialog
+      :open="!!deletingList"
+      :title="t('lists.deleteTitle', { name: deletingList?.name ?? '' })"
+      :description="t('lists.deleteText', { n: deletingList ? listCount(deletingList.id) : 0 })"
+      @confirm="deleteList"
+      @cancel="deletingList = null"
+    />
 
     <BottomSheet :open="!!renaming" :title="t('common.rename')" @close="renaming = null">
       <form v-if="renaming" style="display: flex; flex-direction: column; gap: 16px" @submit.prevent="saveRename">

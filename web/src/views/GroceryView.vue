@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { ToggleGroupItem, ToggleGroupRoot } from 'reka-ui'
 import { useI18n } from 'vue-i18n'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import ListCards from '../components/ListCards.vue'
 import PageHeader from '../components/PageHeader.vue'
 import QuickAdd from '../components/QuickAdd.vue'
 import TaskEditor from '../components/TaskEditor.vue'
@@ -19,7 +20,8 @@ const editing = ref<Task | null>(null)
 const confirmClear = ref(false)
 const lastDepartment = ref(readLastDepartment())
 
-const items = computed(() => tasks.byType('grocery'))
+const currentList = computed(() => catalog.currentList('grocery'))
+const items = computed(() => (currentList.value ? tasks.byList(currentList.value.id) : []))
 const openCount = computed(() => items.value.filter((x) => !x.is_completed).length)
 const doneCount = computed(() => items.value.length - openCount.value)
 
@@ -68,7 +70,8 @@ async function add(title: string, departmentId: string | null) {
     // storage unavailable
   }
   lastDepartment.value = departmentId ?? undefined
-  await tasks.add({ title, item_type: 'grocery', department_id: departmentId })
+  if (!currentList.value) return
+  await tasks.add({ title, item_type: 'grocery', list_id: currentList.value.id, department_id: departmentId })
 }
 
 async function save(patch: Partial<TaskFields>) {
@@ -83,13 +86,19 @@ async function remove() {
 
 async function clearCart() {
   confirmClear.value = false
-  await tasks.clearCompleted('grocery')
+  if (currentList.value) await tasks.clearCompleted(currentList.value.id)
 }
 </script>
 
 <template>
   <main class="page">
     <PageHeader :title="t('grocery.title')" :subtitle="t('grocery.summary', { open: openCount, done: doneCount })" />
+
+    <ListCards
+      kind="grocery"
+      :selected-id="currentList?.id ?? ''"
+      @select="(id) => catalog.selectList('grocery', id)"
+    />
 
     <div v-if="items.length === 0" class="empty">
       <strong>{{ t('grocery.empty') }}</strong

@@ -25,8 +25,25 @@ export interface DepartmentOrder {
 
 export type ItemType = 'grocery' | 'general_task'
 
+export interface List {
+  id: string
+  name: string
+  kind: ItemType
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ListSummary extends List {
+  open_count: number
+  done_count: number
+  overdue_count: number
+  next_due: string | null
+}
+
 export interface Task {
   id: string
+  list_id: string
   title: string
   notes: string | null
   is_completed: boolean
@@ -40,7 +57,7 @@ export interface Task {
 
 export type TaskFields = Pick<
   Task,
-  'title' | 'notes' | 'is_completed' | 'item_type' | 'department_id' | 'assignee_id' | 'due_date'
+  'list_id' | 'title' | 'notes' | 'is_completed' | 'item_type' | 'department_id' | 'assignee_id' | 'due_date'
 >
 
 /** Partial update; updated_at is the client-side timestamp used for last-write-wins. */

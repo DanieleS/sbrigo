@@ -15,6 +15,7 @@ const { t } = useI18n()
 const catalog = useCatalogStore()
 
 const form = reactive({
+  list_id: props.task.list_id,
   title: props.task.title,
   notes: props.task.notes ?? '',
   department_id: props.task.department_id ?? NO_DEPARTMENT,
@@ -23,6 +24,17 @@ const form = reactive({
   item_type: props.task.item_type,
 })
 const confirmDelete = ref(false)
+
+const listOptions = computed(() =>
+  [...catalog.lists]
+    .sort((a, b) => a.kind.localeCompare(b.kind) || a.sort_order - b.sort_order)
+    .map((l) => ({
+      value: l.id,
+      label: `${l.name} · ${l.kind === 'grocery' ? t('lists.kindGrocery') : t('lists.kindTasks')}`,
+    })),
+)
+/** The item type follows the chosen list. */
+const itemType = computed(() => catalog.listById(form.list_id)?.kind ?? form.item_type)
 
 const departmentOptions = computed(() => [
   { value: NO_DEPARTMENT, label: t('editor.noDepartment') },
@@ -46,11 +58,12 @@ function setDueChip(value: unknown) {
 function save() {
   const title = form.title.trim()
   if (!title) return
-  const grocery = form.item_type === 'grocery'
+  const grocery = itemType.value === 'grocery'
   emit('save', {
+    list_id: form.list_id,
     title,
     notes: form.notes.trim() || null,
-    item_type: form.item_type,
+    item_type: itemType.value,
     department_id: grocery && form.department_id !== NO_DEPARTMENT ? form.department_id : null,
     assignee_id: grocery ? null : form.assignee_id || null,
     due_date: grocery ? null : form.due_date,
@@ -67,40 +80,11 @@ function save() {
       </div>
 
       <div class="field">
-        <span id="te-type-label" class="label">{{ t('editor.type') }}</span>
-        <ToggleGroupRoot
-          v-model="form.item_type"
-          type="single"
-          aria-labelledby="te-type-label"
-          style="
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 4px;
-            padding: 4px;
-            border-radius: 12px;
-            background: var(--bg);
-          "
-        >
-          <ToggleGroupItem
-            value="grocery"
-            class="btn ghost small"
-            style="min-height: 40px"
-            :class="{ dark: form.item_type === 'grocery' }"
-          >
-            {{ t('editor.grocery') }}
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="general_task"
-            class="btn ghost small"
-            style="min-height: 40px"
-            :class="{ dark: form.item_type === 'general_task' }"
-          >
-            {{ t('editor.task') }}
-          </ToggleGroupItem>
-        </ToggleGroupRoot>
+        <span class="label">{{ t('lists.list') }}</span>
+        <AppSelect v-model="form.list_id" :label="t('lists.list')" :options="listOptions" />
       </div>
 
-      <div v-if="form.item_type === 'grocery'" class="field">
+      <div v-if="itemType === 'grocery'" class="field">
         <span class="label">{{ t('editor.department') }}</span>
         <AppSelect v-model="form.department_id" :label="t('editor.department')" :options="departmentOptions" />
       </div>

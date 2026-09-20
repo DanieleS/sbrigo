@@ -3,21 +3,25 @@ import { computed, ref } from 'vue'
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui'
 import { useI18n } from 'vue-i18n'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import ListCards from '../components/ListCards.vue'
 import PageHeader from '../components/PageHeader.vue'
 import QuickAdd from '../components/QuickAdd.vue'
 import TaskEditor from '../components/TaskEditor.vue'
 import TaskRow from '../components/TaskRow.vue'
-import { daysFromToday } from '../format'
+import { daysFromToday, formatDue } from '../format'
+import { useCatalogStore } from '../stores/catalog'
 import { useTasksStore } from '../stores/tasks'
 import type { Task, TaskFields } from '../types'
 
 const { t } = useI18n()
+const catalog = useCatalogStore()
 const tasks = useTasksStore()
 const editing = ref<Task | null>(null)
 const showDone = ref(false)
 const confirmClear = ref(false)
 
-const items = computed(() => tasks.byType('general_task'))
+const currentList = computed(() => catalog.currentList('general_task'))
+const items = computed(() => (currentList.value ? tasks.byList(currentList.value.id) : []))
 const byDue = (a: Task, b: Task) =>
   (a.due_date ?? '9').localeCompare(b.due_date ?? '9') || a.created_at.localeCompare(b.created_at)
 
@@ -45,16 +49,19 @@ const done = computed(() =>
 )
 
 const summary = computed(() => {
-  const overdue = buckets.value.find((b) => b.key === 'overdue')?.items.length ?? 0
-  const week = items.value.filter((x) => {
-    const d = daysFromToday(x.due_date)
-    return !x.is_completed && d !== null && d >= 0 && d <= 7
-  }).length
-  return overdue > 0 ? t('tasks.summary', { overdue, week }) : t('tasks.summaryNoOverdue', { week })
+  const open = items.value.filter((x) => !x.is_completed)
+  const next = open
+    .map((x) => x.due_date)
+    .filter((d): d is string => !!d)
+    .sort()[0]
+  return next
+    ? t('tasks.summary', { open: open.length, next: formatDue(next) })
+    : t('tasks.summaryNoNext', { open: open.length })
 })
 
 async function add(title: string) {
-  editing.value = await tasks.add({ title, item_type: 'general_task' })
+  if (!currentList.value) return
+  editing.value = await tasks.add({ title, item_type: 'general_task', list_id: currentList.value.id })
 }
 async function save(patch: Partial<TaskFields>) {
   if (editing.value) await tasks.patch(editing.value.id, patch)
@@ -66,13 +73,19 @@ async function remove() {
 }
 async function clearDone() {
   confirmClear.value = false
-  await tasks.clearCompleted('general_task')
+  if (currentList.value) await tasks.clearCompleted(currentList.value.id)
 }
 </script>
 
 <template>
   <main class="page" style="--dock-h: 70px">
     <PageHeader :title="t('tasks.title')" :subtitle="summary" />
+
+    <ListCards
+      kind="general_task"
+      :selected-id="currentList?.id ?? ''"
+      @select="(id) => catalog.selectList('general_task', id)"
+    />
 
     <div v-if="items.length === 0" class="empty">
       <strong>{{ t('tasks.empty') }}</strong

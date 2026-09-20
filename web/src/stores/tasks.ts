@@ -17,6 +17,7 @@ export const useTasksStore = defineStore('tasks', {
   getters: {
     all: (s) => Object.values(s.tasks),
     byType: (s) => (type: ItemType) => Object.values(s.tasks).filter((t) => t.item_type === type),
+    byList: (s) => (listId: string) => Object.values(s.tasks).filter((t) => t.list_id === listId),
   },
   actions: {
     async init() {
@@ -45,10 +46,11 @@ export const useTasksStore = defineStore('tasks', {
       }
     },
 
-    async add(fields: Partial<TaskFields> & { title: string; item_type: ItemType }): Promise<Task> {
+    async add(fields: Partial<TaskFields> & { title: string; item_type: ItemType; list_id: string }): Promise<Task> {
       const ts = now()
       const task: Task = {
         id: crypto.randomUUID(),
+        list_id: fields.list_id,
         title: fields.title.trim(),
         notes: fields.notes ?? null,
         is_completed: fields.is_completed ?? false,
@@ -92,8 +94,8 @@ export const useTasksStore = defineStore('tasks', {
       kick()
     },
 
-    async clearCompleted(type: ItemType) {
-      const done = this.byType(type).filter((t) => t.is_completed)
+    async clearCompleted(listId: string) {
+      const done = this.byList(listId).filter((t) => t.is_completed)
       for (const t of done) {
         await this.dropLocal(t.id)
         await enqueue({ kind: 'delete', task_id: t.id, queued_at: now() })

@@ -52,6 +52,10 @@ docs/                  requisiti, architettura e API
 - **Utenti.** Al primo login il backend crea il profilo locale (`users`) a partire dai claim
   OIDC, così le attività possono essere assegnate ai membri della famiglia. Tutti gli utenti
   autenticati hanno permessi di lettura e scrittura completi.
+- **Liste.** Spesa e attività sono composte da più liste (es. "Spesa", "Farmacia", "Casa",
+  "Burocrazia"). Ogni lista appare come card con l'anteprima: elementi da fare, in ritardo e
+  prossima scadenza, calcolati in locale così funzionano anche offline. La lista selezionata è
+  ricordata per dispositivo.
 - **Interfaccia.** Componenti accessibili di Reka UI (select, dialog a foglio, checkbox, toggle,
   toast). Testi in italiano e inglese con vue-i18n: la lingua segue il browser ed è cambiabile
   dalle Impostazioni, come il tema (sistema, chiaro, scuro). I colori sono token CSS in

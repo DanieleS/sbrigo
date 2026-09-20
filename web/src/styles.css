@@ -807,3 +807,73 @@ a {
   font: 800 40px var(--font-display);
   letter-spacing: -0.03em;
 }
+
+/* ---------- List cards ---------- */
+.list-cards {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 4px 14px;
+  margin: 0 -4px;
+  scroll-snap-type: x proximity;
+}
+.list-cards::-webkit-scrollbar {
+  display: none;
+}
+.list-card {
+  flex: none;
+  width: 160px;
+  min-height: 92px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--card);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  scroll-snap-align: start;
+  color: var(--text);
+}
+.list-card[data-state='on'] {
+  background: var(--sel);
+  border-color: var(--sel);
+  color: var(--on-sel);
+}
+.list-card-name {
+  font: 700 15px/1.2 var(--font-display);
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.list-card-main {
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.list-card-sub {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.75;
+  min-height: 18px;
+  display: flex;
+  align-items: center;
+}
+.list-card[data-state='on'] .list-card-sub {
+  opacity: 0.8;
+}
+.list-card[data-state='on'] .chip.overdue {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.list-card.add {
+  width: 56px;
+  min-height: 92px;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  border-style: dashed;
+  background: transparent;
+}

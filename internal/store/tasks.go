@@ -13,11 +13,11 @@ import (
 	"github.com/danieles/sbrigo/internal/model"
 )
 
-const taskColumns = `id, title, notes, is_completed, item_type, department_id, assignee_id, due_date, created_at, updated_at`
+const taskColumns = `id, list_id, title, notes, is_completed, item_type, department_id, assignee_id, due_date, created_at, updated_at`
 
 func scanTask(row pgx.Row) (model.Task, error) {
 	var t model.Task
-	err := row.Scan(&t.ID, &t.Title, &t.Notes, &t.IsCompleted, &t.ItemType, &t.DepartmentID, &t.AssigneeID, &t.DueDate, &t.CreatedAt, &t.UpdatedAt)
+	err := row.Scan(&t.ID, &t.ListID, &t.Title, &t.Notes, &t.IsCompleted, &t.ItemType, &t.DepartmentID, &t.AssigneeID, &t.DueDate, &t.CreatedAt, &t.UpdatedAt)
 	return t, err
 }
 
@@ -30,6 +30,9 @@ func (s *Store) ListTasks(ctx context.Context, f model.TaskFilter) ([]model.Task
 	add := func(cond string, v any) {
 		args = append(args, v)
 		where = append(where, fmt.Sprintf(cond, len(args)))
+	}
+	if f.ListID != nil {
+		add("list_id = $%d", *f.ListID)
 	}
 	if f.ItemType != "" {
 		add("item_type = $%d", f.ItemType)
@@ -68,6 +71,32 @@ func (s *Store) GetTask(ctx context.Context, id uuid.UUID) (model.Task, error) {
 	return t, err
 }
 
+// ErrUnknownList is returned when a task references a list that does not exist.
+var ErrUnknownList = errors.New("unknown list")
+
+// resolveList makes list and item type agree: an explicit list sets the type from its kind, a
+// missing list falls back to the default list of the requested type.
+func (s *Store) resolveList(ctx context.Context, listID uuid.UUID, itemType string) (uuid.UUID, string, error) {
+	if listID != uuid.Nil {
+		l, err := s.GetList(ctx, listID)
+		if errors.Is(err, ErrNotFound) {
+			return uuid.Nil, "", ErrUnknownList
+		}
+		if err != nil {
+			return uuid.Nil, "", err
+		}
+		return l.ID, l.Kind, nil
+	}
+	if itemType == "" {
+		itemType = model.ItemTypeGrocery
+	}
+	id, err := s.DefaultListID(ctx, itemType)
+	if errors.Is(err, ErrNotFound) {
+		return uuid.Nil, "", ErrUnknownList
+	}
+	return id, itemType, err
+}
+
 // CreateTask inserts a task. Clients may supply their own id so that an offline queue can be
 // replayed idempotently: re-inserting an existing id returns the stored row unchanged and
 // created=false.
@@ -75,6 +104,11 @@ func (s *Store) CreateTask(ctx context.Context, t model.Task) (model.Task, bool,
 	if t.ID == uuid.Nil {
 		t.ID = uuid.New()
 	}
+	listID, itemType, err := s.resolveList(ctx, t.ListID, t.ItemType)
+	if err != nil {
+		return model.Task{}, false, err
+	}
+	t.ListID, t.ItemType = listID, itemType
 	now := time.Now().UTC()
 	if t.CreatedAt.IsZero() {
 		t.CreatedAt = now
@@ -83,11 +117,11 @@ func (s *Store) CreateTask(ctx context.Context, t model.Task) (model.Task, bool,
 		t.UpdatedAt = t.CreatedAt
 	}
 	row := s.pool.QueryRow(ctx, `
-		INSERT INTO tasks (id, title, notes, is_completed, item_type, department_id, assignee_id, due_date, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		INSERT INTO tasks (id, list_id, title, notes, is_completed, item_type, department_id, assignee_id, due_date, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		ON CONFLICT (id) DO NOTHING
 		RETURNING `+taskColumns,
-		t.ID, t.Title, t.Notes, t.IsCompleted, t.ItemType, t.DepartmentID, t.AssigneeID, t.DueDate, t.CreatedAt, t.UpdatedAt)
+		t.ID, t.ListID, t.Title, t.Notes, t.IsCompleted, t.ItemType, t.DepartmentID, t.AssigneeID, t.DueDate, t.CreatedAt, t.UpdatedAt)
 	out, err := scanTask(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		existing, err := s.GetTask(ctx, t.ID)
@@ -115,6 +149,15 @@ func (s *Store) UpdateTask(ctx context.Context, id uuid.UUID, p model.TaskPatch)
 		args = append(args, v)
 		sets = append(sets, fmt.Sprintf("%s = $%d", col, len(args)))
 	}
+	// Moving between lists (or changing the type) keeps list and type consistent.
+	if p.ListID.Set || p.ItemType.Set {
+		listID, itemType, err := s.resolveList(ctx, p.ListID.Value, p.ItemType.Value)
+		if err != nil {
+			return model.Task{}, err
+		}
+		set("list_id", listID)
+		set("item_type", itemType)
+	}
 	if p.Title.Set {
 		set("title", p.Title.Value)
 	}
@@ -123,9 +166,6 @@ func (s *Store) UpdateTask(ctx context.Context, id uuid.UUID, p model.TaskPatch)
 	}
 	if p.IsCompleted.Set {
 		set("is_completed", p.IsCompleted.Value)
-	}
-	if p.ItemType.Set {
-		set("item_type", p.ItemType.Value)
 	}
 	if p.DepartmentID.Set {
 		set("department_id", p.DepartmentID.Value)
@@ -163,14 +203,18 @@ func (s *Store) DeleteTask(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// DeleteCompletedTasks removes every completed task of the given type (empty = all types) and
-// returns the ids removed so they can be broadcast.
-func (s *Store) DeleteCompletedTasks(ctx context.Context, itemType string) ([]uuid.UUID, error) {
+// DeleteCompletedTasks removes every completed task of the given type and/or list (empty = all)
+// and returns the ids removed so they can be broadcast.
+func (s *Store) DeleteCompletedTasks(ctx context.Context, itemType string, listID *uuid.UUID) ([]uuid.UUID, error) {
 	q := `DELETE FROM tasks WHERE is_completed`
 	var args []any
 	if itemType != "" {
-		q += ` AND item_type = $1`
 		args = append(args, itemType)
+		q += fmt.Sprintf(` AND item_type = $%d`, len(args))
+	}
+	if listID != nil {
+		args = append(args, *listID)
+		q += fmt.Sprintf(` AND list_id = $%d`, len(args))
 	}
 	rows, err := s.pool.Query(ctx, q+` RETURNING id`, args...)
 	if err != nil {

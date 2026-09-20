@@ -58,6 +58,18 @@ last-write-wins (il body è la riga corrente, non un errore), `500` errore inter
 `PUT department-order` sostituisce l'intera sequenza. I reparti non elencati vengono mostrati
 dopo quelli ordinati, secondo `default_sort_order`.
 
+### Liste
+
+Ogni task appartiene a una lista. Il `kind` della lista (`grocery` o `general_task`) determina il
+tipo dei suoi elementi ed è immutabile. Deve esistere sempre almeno una lista per tipo.
+
+| Metodo | Path           | Body / note                                                              |
+| ------ | -------------- | ------------------------------------------------------------------------ |
+| GET    | `/lists`       | elenco con anteprima: `open_count`, `done_count`, `overdue_count`, `next_due` |
+| POST   | `/lists`       | `{ "name", "kind", "sort_order" }`                                       |
+| PUT    | `/lists/{id}`  | `{ "name", "sort_order" }`                                               |
+| DELETE | `/lists/{id}`  | elimina la lista **e i suoi elementi**; `409` se è l'ultima del suo tipo |
+
 ### Task (articoli della spesa e attività)
 
 Oggetto `Task`:
@@ -65,6 +77,7 @@ Oggetto `Task`:
 ```json
 {
   "id": "uuid",
+  "list_id": "uuid",
   "title": "Latte",
   "notes": null,
   "is_completed": false,
@@ -79,16 +92,20 @@ Oggetto `Task`:
 
 | Metodo | Path                              | Descrizione                                                    |
 | ------ | --------------------------------- | -------------------------------------------------------------- |
-| GET    | `/tasks`                          | filtri: `type`, `completed`, `department_id`, `assignee_id`, `since` |
-| POST   | `/tasks`                          | crea; `item_type` default `grocery`                            |
+| GET    | `/tasks`                          | filtri: `list_id`, `type`, `completed`, `department_id`, `assignee_id`, `since` |
+| POST   | `/tasks`                          | crea; senza `list_id` va nella prima lista del tipo (`item_type` default `grocery`); con `list_id` il tipo segue la lista |
 | GET    | `/tasks/{id}`                     | dettaglio                                                      |
 | PATCH  | `/tasks/{id}`                     | aggiornamento parziale                                         |
 | DELETE | `/tasks/{id}`                     | elimina                                                        |
-| DELETE | `/tasks?completed=true[&type=…]`  | elimina tutti i completati → `{ "deleted": n, "ids": [...] }`  |
+| DELETE | `/tasks?completed=true[&type=…][&list_id=…]` | elimina i completati → `{ "deleted": n, "ids": [...] }` |
 
 **Creazione idempotente.** `POST /tasks` accetta opzionalmente `id`, `created_at` e `updated_at`
 forniti dal client. Se l'`id` esiste già la risposta è `200` con la riga esistente (nessuna
 modifica); altrimenti `201`. Questo permette di riprodurre la coda offline senza duplicati.
+
+**Spostare tra liste.** `PATCH` con `list_id` sposta l'elemento; se la lista di destinazione è di
+un altro tipo, `item_type` cambia di conseguenza. Un `PATCH` con solo `item_type` sposta
+l'elemento nella prima lista di quel tipo.
 
 **PATCH e last-write-wins.** Nel body vanno solo i campi da cambiare; `null` esplicito azzera un
 campo nullable (`notes`, `department_id`, `assignee_id`, `due_date`). Il campo opzionale
@@ -126,7 +143,7 @@ curl -X PATCH https://sbrigo.casa.example/api/v1/tasks/<id> \
 poi, a ogni scrittura, un evento con `id` progressivo, `event` fra:
 
 `task.created`, `task.updated` (data: il `Task`), `task.deleted` (data: `{ "id" }`),
-`department.created|updated|deleted`, `supermarket.created|updated|deleted`,
+`department.created|updated|deleted`, `supermarket.created|updated|deleted`, `list.created|updated|deleted`,
 `supermarket.order_updated` (data: `{ "supermarket_id", "order": [...] }`).
 
 Ogni 25 secondi viene inviato un commento `: ping` per tenere viva la connessione attraverso il

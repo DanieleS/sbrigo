@@ -46,6 +46,11 @@ func (s *Server) Register(mux *http.ServeMux) {
 	api.HandleFunc("GET /api/v1/supermarkets/{id}/department-order", s.getDepartmentOrder)
 	api.HandleFunc("PUT /api/v1/supermarkets/{id}/department-order", s.putDepartmentOrder)
 
+	api.HandleFunc("GET /api/v1/lists", s.listLists)
+	api.HandleFunc("POST /api/v1/lists", s.createList)
+	api.HandleFunc("PUT /api/v1/lists/{id}", s.updateList)
+	api.HandleFunc("DELETE /api/v1/lists/{id}", s.deleteList)
+
 	api.HandleFunc("GET /api/v1/tasks", s.listTasks)
 	api.HandleFunc("POST /api/v1/tasks", s.createTask)
 	api.HandleFunc("DELETE /api/v1/tasks", s.deleteCompletedTasks)

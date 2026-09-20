@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
-import type { Department, Supermarket, Task, TaskPatch, User } from './types'
+import type { Department, List, Supermarket, Task, TaskPatch, User } from './types'
 
 /** One queued change waiting to reach the server. */
 export type OutboxOp =
@@ -12,25 +12,31 @@ interface SbrigoDB extends DBSchema {
   departments: { key: string; value: Department }
   supermarkets: { key: string; value: Supermarket }
   users: { key: string; value: User }
+  lists: { key: string; value: List }
   orders: { key: string; value: { supermarket_id: string; department_ids: string[] } }
   outbox: { key: number; value: OutboxOp }
   meta: { key: string; value: unknown }
 }
 
-type StoreName = 'tasks' | 'departments' | 'supermarkets' | 'users' | 'orders'
+type StoreName = 'tasks' | 'departments' | 'supermarkets' | 'users' | 'lists' | 'orders'
 
 let dbPromise: Promise<IDBPDatabase<SbrigoDB>> | null = null
 
 function db() {
-  dbPromise ??= openDB<SbrigoDB>('sbrigo', 1, {
-    upgrade(d) {
-      d.createObjectStore('tasks', { keyPath: 'id' })
-      d.createObjectStore('departments', { keyPath: 'id' })
-      d.createObjectStore('supermarkets', { keyPath: 'id' })
-      d.createObjectStore('users', { keyPath: 'id' })
-      d.createObjectStore('orders', { keyPath: 'supermarket_id' })
-      d.createObjectStore('outbox', { keyPath: 'seq', autoIncrement: true })
-      d.createObjectStore('meta')
+  dbPromise ??= openDB<SbrigoDB>('sbrigo', 2, {
+    upgrade(d, oldVersion) {
+      if (oldVersion < 1) {
+        d.createObjectStore('tasks', { keyPath: 'id' })
+        d.createObjectStore('departments', { keyPath: 'id' })
+        d.createObjectStore('supermarkets', { keyPath: 'id' })
+        d.createObjectStore('users', { keyPath: 'id' })
+        d.createObjectStore('orders', { keyPath: 'supermarket_id' })
+        d.createObjectStore('outbox', { keyPath: 'seq', autoIncrement: true })
+        d.createObjectStore('meta')
+      }
+      if (oldVersion < 2) {
+        d.createObjectStore('lists', { keyPath: 'id' })
+      }
     },
   })
   return dbPromise
