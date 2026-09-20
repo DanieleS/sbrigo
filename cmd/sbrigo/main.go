@@ -51,7 +51,20 @@ func run() error {
 	st := store.New(pool)
 	broker := realtime.NewBroker(log)
 	signer := auth.NewSigner(cfg.SessionSecret)
-	authn := auth.NewAuthenticator(signer, cfg.APIKey)
+	var sessions auth.SessionStore
+	if cfg.RedisURL != "" {
+		rs, err := auth.NewRedisSessions(ctx, cfg.RedisURL)
+		if err != nil {
+			return err
+		}
+		defer rs.Close()
+		sessions = rs
+		log.Info("session store: redis")
+	} else {
+		sessions = auth.NewSignedSessions(signer)
+		log.Warn("session store: signed cookies (no revocation); set SBRIGO_REDIS_URL to enable server-side sessions")
+	}
+	authn := auth.NewAuthenticator(sessions, cfg.APIKey, log)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -70,14 +83,14 @@ func run() error {
 			PublicURL:    cfg.PublicURL,
 			SessionTTL:   cfg.SessionTTL,
 			Secure:       cfg.SecureCookies(),
-		}, signer, st, log)
+		}, signer, sessions, st, log)
 		if err != nil {
 			return err
 		}
 		o.Register(mux)
 		log.Info("oidc login enabled", "issuer", cfg.OIDCIssuer)
 	} else {
-		mux.Handle("POST /auth/logout", auth.LogoutHandler(cfg.SecureCookies()))
+		mux.Handle("POST /auth/logout", auth.LogoutHandler(sessions, cfg.SecureCookies(), log))
 		mux.HandleFunc("/auth/login", func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "OIDC login is not configured", http.StatusNotImplemented)
 		})

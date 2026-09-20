@@ -3,6 +3,7 @@ package auth
 import (
 	"crypto/subtle"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -13,15 +14,16 @@ const APIKeyHeader = "X-API-Key"
 
 // Authenticator resolves the principal of incoming requests.
 type Authenticator struct {
-	signer *Signer
-	apiKey string
+	sessions SessionStore
+	apiKey   string
+	log      *slog.Logger
 	// devUser, when non-nil, is applied to every anonymous request (local development only).
 	devUser *uuid.UUID
 }
 
 // NewAuthenticator creates the middleware. apiKey may be empty to disable agent access.
-func NewAuthenticator(signer *Signer, apiKey string) *Authenticator {
-	return &Authenticator{signer: signer, apiKey: apiKey}
+func NewAuthenticator(sessions SessionStore, apiKey string, log *slog.Logger) *Authenticator {
+	return &Authenticator{sessions: sessions, apiKey: apiKey, log: log}
 }
 
 // EnableDevAutoLogin makes every anonymous request act as userID.
@@ -37,8 +39,11 @@ func (a *Authenticator) Resolve(r *http.Request) (Principal, bool) {
 		}
 		return Principal{}, false
 	}
-	if c, err := r.Cookie(SessionCookie); err == nil {
-		if id, err := a.signer.ParseSession(c.Value); err == nil {
+	if c, err := r.Cookie(SessionCookie); err == nil && c.Value != "" {
+		id, ok, err := a.sessions.Resolve(r.Context(), c.Value)
+		if err != nil {
+			a.log.Error("session lookup failed", "err", err)
+		} else if ok {
 			return Principal{Kind: KindUser, UserID: id}, true
 		}
 	}

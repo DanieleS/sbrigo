@@ -46,7 +46,7 @@ func newTestServer(t *testing.T) (*httptest.Server, *store.Store, *realtime.Brok
 
 	st := store.New(pool)
 	broker := realtime.NewBroker(log)
-	authn := auth.NewAuthenticator(auth.NewSigner("0123456789abcdef0123456789abcdef"), "agent-key")
+	authn := auth.NewAuthenticator(auth.NewSignedSessions(auth.NewSigner("0123456789abcdef0123456789abcdef")), "agent-key", log)
 	mux := http.NewServeMux()
 	New(st, broker, authn, log).Register(mux)
 	srv := httptest.NewServer(mux)

@@ -16,8 +16,9 @@ type Config struct {
 	PublicURL   string // SBRIGO_PUBLIC_URL, external base URL used for OIDC redirects and cookies
 	DatabaseURL string // SBRIGO_DATABASE_URL, PostgreSQL connection string
 
-	SessionSecret string        // SBRIGO_SESSION_SECRET, HMAC key for session cookies (>= 32 chars)
+	SessionSecret string        // SBRIGO_SESSION_SECRET, HMAC key for login-state cookies and the stateless fallback (>= 32 chars)
 	SessionTTL    time.Duration // SBRIGO_SESSION_TTL (default 720h)
+	RedisURL      string        // SBRIGO_REDIS_URL, server-side session store (redis://host:6379/0); empty = signed cookies
 
 	OIDCIssuer       string // SBRIGO_OIDC_ISSUER, e.g. https://logto.example.com/oidc
 	OIDCClientID     string // SBRIGO_OIDC_CLIENT_ID
@@ -39,6 +40,7 @@ func Load() (Config, error) {
 		PublicURL:         strings.TrimRight(getenv("SBRIGO_PUBLIC_URL", "http://localhost:8080"), "/"),
 		DatabaseURL:       os.Getenv("SBRIGO_DATABASE_URL"),
 		SessionSecret:     os.Getenv("SBRIGO_SESSION_SECRET"),
+		RedisURL:          os.Getenv("SBRIGO_REDIS_URL"),
 		OIDCIssuer:        os.Getenv("SBRIGO_OIDC_ISSUER"),
 		OIDCClientID:      os.Getenv("SBRIGO_OIDC_CLIENT_ID"),
 		OIDCClientSecret:  os.Getenv("SBRIGO_OIDC_CLIENT_SECRET"),

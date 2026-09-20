@@ -1,5 +1,5 @@
-# Local development / homelab example. In the homelab the app usually points at the existing
-# PostgreSQL instance instead of the bundled one: drop the `db` service and set SBRIGO_DATABASE_URL.
+# Local development / homelab example. In the homelab the app points at the existing PostgreSQL
+# and Redis instances: drop the `db` and `redis` services and set SBRIGO_DATABASE_URL / SBRIGO_REDIS_URL.
 services:
   sbrigo:
     build: .
@@ -8,8 +8,11 @@ services:
     env_file: .env
     environment:
       SBRIGO_DATABASE_URL: ${SBRIGO_DATABASE_URL:-postgres://sbrigo:sbrigo@db:5432/sbrigo?sslmode=disable}
+      SBRIGO_REDIS_URL: ${SBRIGO_REDIS_URL:-redis://redis:6379/0}
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
 
@@ -27,5 +30,17 @@ services:
       timeout: 3s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
+    volumes:
+      - sbrigo-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
 volumes:
   sbrigo-db:
+  sbrigo-redis:

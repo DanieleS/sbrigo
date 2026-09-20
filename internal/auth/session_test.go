@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -45,7 +46,7 @@ func TestSignerRejectsTamperingAndExpiry(t *testing.T) {
 
 func TestAuthenticatorResolve(t *testing.T) {
 	signer := NewSigner("0123456789abcdef0123456789abcdef")
-	a := NewAuthenticator(signer, "agent-key")
+	a := NewAuthenticator(NewSignedSessions(signer), "agent-key", slog.Default())
 	userID := uuid.New()
 
 	cases := []struct {
@@ -83,7 +84,7 @@ func TestAuthenticatorResolve(t *testing.T) {
 }
 
 func TestAuthenticatorDisabledAPIKey(t *testing.T) {
-	a := NewAuthenticator(NewSigner("0123456789abcdef0123456789abcdef"), "")
+	a := NewAuthenticator(NewSignedSessions(NewSigner("0123456789abcdef0123456789abcdef")), "", slog.Default())
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	r.Header.Set(APIKeyHeader, "")
 	if _, ok := a.Resolve(r); ok {
@@ -92,7 +93,7 @@ func TestAuthenticatorDisabledAPIKey(t *testing.T) {
 }
 
 func TestRequireReturns401(t *testing.T) {
-	a := NewAuthenticator(NewSigner("0123456789abcdef0123456789abcdef"), "")
+	a := NewAuthenticator(NewSignedSessions(NewSigner("0123456789abcdef0123456789abcdef")), "", slog.Default())
 	called := false
 	h := a.Require(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true

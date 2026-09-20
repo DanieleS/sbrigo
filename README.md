@@ -15,7 +15,7 @@ il riferimento delle API in [`docs/API.md`](docs/API.md).
 | Backend         | Go 1.24, `net/http`, pgx v5, go-oidc                              |
 | Frontend        | Vue 3, TypeScript 6, Vite, Pinia, vue-router, vite-plugin-pwa, IndexedDB (idb) |
 | Database        | PostgreSQL (istanza esistente dell'homelab)                       |
-| Autenticazione  | Logto via OIDC, Authorization Code + PKCE, cookie di sessione     |
+| Autenticazione  | Logto via OIDC, Authorization Code + PKCE, sessioni in Redis      |
 | Realtime        | Server-Sent Events                                                |
 | Deploy          | Un solo container Docker (frontend embedded nel binario Go)       |
 
@@ -45,6 +45,10 @@ docs/                  requisiti, architettura e API
   `409` con la riga corrente e il client la adotta.
 - **Realtime.** Ogni scrittura viene pubblicata su `/api/v1/events` (SSE). I client connessi
   aggiornano la lista istantaneamente; a ogni riconnessione fanno un refresh completo.
+- **Sessioni.** Il cookie contiene solo un token opaco; la sessione vive in Redis (indicizzata per
+  utente, salvata come hash del token) e può essere revocata: `POST /auth/logout` chiude quella
+  corrente, `POST /auth/logout-all` tutte quelle dell'utente. Senza Redis il backend ripiega su un
+  cookie firmato HMAC, che non è revocabile prima della scadenza.
 - **Utenti.** Al primo login il backend crea il profilo locale (`users`) a partire dai claim
   OIDC, così le attività possono essere assegnate ai membri della famiglia. Tutti gli utenti
   autenticati hanno permessi di lettura e scrittura completi.
@@ -58,7 +62,8 @@ Tutte le variabili sono documentate in [`.env.example`](.env.example). Le princi
 | Variabile                    | Descrizione                                                       |
 | ---------------------------- | ----------------------------------------------------------------- |
 | `SBRIGO_DATABASE_URL`        | connection string PostgreSQL (obbligatoria)                       |
-| `SBRIGO_SESSION_SECRET`      | chiave HMAC dei cookie di sessione, almeno 32 caratteri           |
+| `SBRIGO_SESSION_SECRET`      | chiave HMAC del cookie di login e del fallback stateless          |
+| `SBRIGO_REDIS_URL`           | Redis per le sessioni lato server; vuoto = cookie firmati         |
 | `SBRIGO_PUBLIC_URL`          | URL pubblico dietro il reverse proxy                              |
 | `SBRIGO_OIDC_ISSUER`         | issuer Logto, es. `https://logto.casa.example/oidc`               |
 | `SBRIGO_OIDC_CLIENT_ID`      | client id dell'applicazione Logto                                 |

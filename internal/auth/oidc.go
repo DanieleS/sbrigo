@@ -38,12 +38,13 @@ type OIDC struct {
 	verifier *oidc.IDTokenVerifier
 	oauth    oauth2.Config
 	signer   *Signer
+	sessions SessionStore
 	users    UserSyncer
 	log      *slog.Logger
 }
 
 // NewOIDC discovers the provider and prepares the flow.
-func NewOIDC(ctx context.Context, opts OIDCOptions, signer *Signer, users UserSyncer, log *slog.Logger) (*OIDC, error) {
+func NewOIDC(ctx context.Context, opts OIDCOptions, signer *Signer, sessions SessionStore, users UserSyncer, log *slog.Logger) (*OIDC, error) {
 	provider, err := oidc.NewProvider(ctx, opts.Issuer)
 	if err != nil {
 		return nil, fmt.Errorf("oidc discovery for %s: %w", opts.Issuer, err)
@@ -58,9 +59,10 @@ func NewOIDC(ctx context.Context, opts OIDCOptions, signer *Signer, users UserSy
 			RedirectURL:  strings.TrimRight(opts.PublicURL, "/") + "/auth/callback",
 			Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
 		},
-		signer: signer,
-		users:  users,
-		log:    log,
+		signer:   signer,
+		sessions: sessions,
+		users:    users,
+		log:      log,
 	}, nil
 }
 
@@ -69,6 +71,7 @@ func (o *OIDC) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/login", o.login)
 	mux.HandleFunc("GET /auth/callback", o.callback)
 	mux.HandleFunc("POST /auth/logout", o.logout)
+	mux.HandleFunc("POST /auth/logout-all", o.logoutAll)
 }
 
 // login starts the flow: state + PKCE verifier are kept in a short-lived signed cookie.
@@ -160,9 +163,15 @@ func (o *OIDC) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sessionToken, err := o.sessions.Create(ctx, user.ID, o.opts.SessionTTL)
+	if err != nil {
+		o.log.Error("session creation failed", "err", err)
+		http.Error(w, "could not create session", http.StatusInternalServerError)
+		return
+	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     SessionCookie,
-		Value:    o.signer.SessionToken(user.ID, o.opts.SessionTTL),
+		Value:    sessionToken,
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   o.opts.Secure,
@@ -173,14 +182,48 @@ func (o *OIDC) callback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, returnTo, http.StatusFound)
 }
 
-func (o *OIDC) logout(w http.ResponseWriter, _ *http.Request) {
+func (o *OIDC) logout(w http.ResponseWriter, r *http.Request) {
+	LogoutHandler(o.sessions, o.opts.Secure, o.log)(w, r)
+}
+
+// logoutAll revokes every session of the calling user ("esci da tutti i dispositivi").
+func (o *OIDC) logoutAll(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie(SessionCookie)
+	if err != nil || c.Value == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	userID, ok, err := o.sessions.Resolve(r.Context(), c.Value)
+	if err != nil {
+		o.log.Error("session lookup failed", "err", err)
+		http.Error(w, "session store unavailable", http.StatusInternalServerError)
+		return
+	}
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	if err := o.sessions.RevokeAll(r.Context(), userID); err != nil {
+		if errors.Is(err, ErrNotSupported) {
+			http.Error(w, "logout from all devices requires the Redis session store", http.StatusNotImplemented)
+			return
+		}
+		o.log.Error("revoke all sessions failed", "err", err)
+		http.Error(w, "could not revoke sessions", http.StatusInternalServerError)
+		return
+	}
 	clearCookie(w, SessionCookie, "/", o.opts.Secure)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// LogoutHandler clears the session without an identity provider (used when OIDC is disabled).
-func LogoutHandler(secure bool) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
+// LogoutHandler revokes the current session and clears the cookie.
+func LogoutHandler(sessions SessionStore, secure bool, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if c, err := r.Cookie(SessionCookie); err == nil && c.Value != "" {
+			if err := sessions.Revoke(r.Context(), c.Value); err != nil {
+				log.Error("session revoke failed", "err", err)
+			}
+		}
 		clearCookie(w, SessionCookie, "/", secure)
 		w.WriteHeader(http.StatusNoContent)
 	}

@@ -14,8 +14,8 @@ Due modalità, valide su tutti gli endpoint:
 Senza credenziali valide la risposta è `401 {"error":"authentication required"}`.
 
 Flusso di login: `GET /auth/login[?return_to=/percorso]` → redirect a Logto → `GET /auth/callback`
-→ cookie di sessione e redirect a `return_to`. Logout: `POST /auth/logout` (204) oppure
-`GET /auth/logout` (redirect a `/`).
+→ cookie di sessione e redirect a `return_to`. Logout: `POST /auth/logout` (204) chiude la sessione
+corrente; `POST /auth/logout-all` (204) revoca tutte le sessioni dell'utente (richiede Redis, altrimenti 501).
 
 ## Formato degli errori
 
