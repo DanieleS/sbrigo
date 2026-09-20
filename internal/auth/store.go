@@ -50,7 +50,7 @@ func NewRedisSessions(ctx context.Context, url string) (*RedisSessions, error) {
 	}
 	rdb := redis.NewClient(opts)
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		rdb.Close()
+		_ = rdb.Close()
 		return nil, fmt.Errorf("ping redis: %w", err)
 	}
 	return &RedisSessions{rdb: rdb, prefix: "sbrigo:"}, nil

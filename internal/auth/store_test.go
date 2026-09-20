@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -84,7 +85,7 @@ func TestRedisSessionsExpire(t *testing.T) {
 
 func TestSignedSessionsCannotRevokeAll(t *testing.T) {
 	s := NewSignedSessions(NewSigner("0123456789abcdef0123456789abcdef"))
-	if err := s.RevokeAll(context.Background(), uuid.New()); err != ErrNotSupported {
+	if err := s.RevokeAll(context.Background(), uuid.New()); !errors.Is(err, ErrNotSupported) {
 		t.Fatalf("expected ErrNotSupported, got %v", err)
 	}
 }

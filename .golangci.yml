@@ -17,6 +17,10 @@ linters:
     rules:
       - path: _test\.go
         linters: [gosec, noctx, errcheck, bodyclose]
+      # G124 wants a literal Secure: true on every cookie. Ours is Secure whenever
+      # SBRIGO_PUBLIC_URL is https and must stay configurable for plain-http LAN deployments.
+      - linters: [gosec]
+        text: "G124"
 formatters:
   enable:
     - gofmt

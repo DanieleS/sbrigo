@@ -72,7 +72,7 @@ func SPAHandler(dist fs.FS) http.Handler {
 			p = "index.html"
 		}
 		if f, err := dist.Open(p); err == nil {
-			f.Close()
+			_ = f.Close()
 			switch {
 			case strings.HasPrefix(p, "assets/"):
 				// Vite emits content-hashed file names: safe to cache forever.
@@ -91,7 +91,7 @@ func SPAHandler(dist fs.FS) http.Handler {
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
-		w.Write(index) //nolint:errcheck
+		_, _ = w.Write(index)
 	})
 }
 

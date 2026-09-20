@@ -10,7 +10,7 @@ import (
 )
 
 // APIKeyHeader carries the static agent key.
-const APIKeyHeader = "X-API-Key"
+const APIKeyHeader = "X-API-Key" //nolint:gosec // an HTTP header name, not a credential
 
 // Authenticator resolves the principal of incoming requests.
 type Authenticator struct {

@@ -85,7 +85,9 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.Set("X-Accel-Buffering", "no") // disable buffering in nginx-style reverse proxies
 	w.WriteHeader(http.StatusOK)
 
-	fmt.Fprintf(w, "retry: 3000\nevent: connected\ndata: {}\n\n")
+	if _, err := fmt.Fprint(w, "retry: 3000\nevent: connected\ndata: {}\n\n"); err != nil {
+		return
+	}
 	flusher.Flush()
 
 	events, cancel := b.Subscribe()

@@ -12,7 +12,7 @@ il riferimento delle API in [`docs/API.md`](docs/API.md).
 
 | Componente      | Tecnologia                                                        |
 | --------------- | ----------------------------------------------------------------- |
-| Backend         | Go 1.24, `net/http`, pgx v5, go-oidc                              |
+| Backend         | Go 1.26, `net/http`, pgx v5, go-oidc                              |
 | Frontend        | Vue 3, TypeScript 6, Vite, Pinia, vue-router, Reka UI, vue-i18n (it/en), vite-plugin-pwa, IndexedDB (idb) |
 | Database        | PostgreSQL (istanza esistente dell'homelab)                       |
 | Autenticazione  | Logto via OIDC, Authorization Code + PKCE, sessioni in Redis      |
@@ -89,7 +89,7 @@ In Logto registrare come redirect URI `${SBRIGO_PUBLIC_URL}/auth/callback`.
 
 ## Sviluppo locale
 
-Prerequisiti: Go 1.24, Node 22, un PostgreSQL raggiungibile.
+Prerequisiti: Go 1.26, Node 22, un PostgreSQL raggiungibile.
 
 ```sh
 # Backend (senza Logto, con utente di sviluppo)

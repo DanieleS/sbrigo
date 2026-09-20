@@ -57,7 +57,7 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		defer rs.Close()
+		defer func() { _ = rs.Close() }()
 		sessions = rs
 		log.Info("session store: redis")
 	} else {
@@ -72,7 +72,7 @@ func run() error {
 			http.Error(w, "database unreachable", http.StatusServiceUnavailable)
 			return
 		}
-		w.Write([]byte("ok")) //nolint:errcheck
+		_, _ = w.Write([]byte("ok"))
 	})
 
 	if cfg.OIDCEnabled() {

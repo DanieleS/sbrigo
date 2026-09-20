@@ -11,7 +11,7 @@ COPY web/ ./
 RUN npm run build
 
 # --- Backend --------------------------------------------------------------
-FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS build
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
 ARG TARGETOS
 ARG TARGETARCH
 WORKDIR /src
