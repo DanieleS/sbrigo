@@ -50,13 +50,11 @@ const done = computed(() =>
 )
 
 const summary = computed(() => {
-  const open = items.value.filter((x) => !x.is_completed)
-  const next = open
-    .map((x) => x.due_date)
-    .filter((d): d is string => !!d)
-    .sort()[0]
-  return next
-    ? t('tasks.summary', { open: open.length, next: formatDue(next) })
+  if (!currentList.value) return ''
+  const s = summarize(currentList.value.id)
+  if (s.overdue > 0) return t('tasks.summaryOverdue', { open: s.open, overdue: s.overdue })
+  return s.nextDue ? t('tasks.summary', { open: s.open, next: formatDue(s.nextDue) }) : t('tasks.summaryNoNext', { open: s.open })
+})
     : t('tasks.summaryNoNext', { open: open.length })
 })
 
