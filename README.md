@@ -58,10 +58,10 @@ docs/                  requisiti, architettura e API
   locale così funzionano anche offline. L'ultima lista aperta è ricordata per dispositivo.
 - **Spesa.** Ogni reparto ha un "+" per aggiungere direttamente lì, oltre alla barra rapida in
   basso. Il menu con i tre puntini raccoglie la scelta del supermercato (che riordina i reparti
-  secondo le sue corsie), la modalità Riordina e Svuota carrello. In modalità Riordina compaiono
-  le maniglie: trascinando un articolo cambia reparto e ordine (campo `position`), trascinando
-  l'intestazione di un reparto cambia l'ordine delle corsie del supermercato selezionato, o quello
-  predefinito. I pulsanti su e giù nelle Impostazioni restano come alternativa da tastiera.
+  secondo le sue corsie), "Riordina reparti" e Svuota carrello. Ogni articolo ha sempre una
+  maniglia: trascinandolo cambia reparto e ordine (campo `position`). In modalità Riordina
+  compaiono anche le maniglie dei reparti, che cambiano l'ordine delle corsie del supermercato
+  selezionato, o quello predefinito. I pulsanti su e giù nelle Impostazioni restano come alternativa da tastiera.
 - **Interfaccia.** Componenti accessibili di Reka UI (select, dialog a foglio, checkbox, toggle,
   toast). Testi in italiano e inglese con vue-i18n: la lingua segue il browser ed è cambiabile
   dalle Impostazioni, come il tema (sistema, chiaro, scuro). I colori sono token CSS in

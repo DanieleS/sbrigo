@@ -124,7 +124,7 @@ onMounted(() => {
     </div>
     <div ref="listEl" class="card drop-list" :data-department-id="department?.id ?? ''">
       <div v-for="x in values" :key="x.id" class="task-wrap" :data-id="x.id">
-        <TaskRow :task="x" :draggable="reorderable" @toggle="emit('toggle', x.id)" @open="emit('open', x)" />
+        <TaskRow :task="x" draggable @toggle="emit('toggle', x.id)" @open="emit('open', x)" />
       </div>
     </div>
     <form v-if="adding" class="inline-add" @submit.prevent="submitAdd">
